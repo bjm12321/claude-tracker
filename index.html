@@ -34,17 +34,15 @@
   .summary{font-size:13px;color:var(--purple)}
   .addbtn{background:var(--purple-deep);border:none;border-radius:9px;color:#fff;padding:9px 15px;font-size:14px;font-weight:600;cursor:pointer;font:inherit;flex-shrink:0;white-space:nowrap}
   .addbtn.ghost{background:var(--card);border:1px solid rgba(255,255,255,.12);color:var(--ink2)}
-  .grid{display:flex;flex-direction:column;gap:12px}
+  .grid{display:flex;flex-direction:column;gap:12px;position:relative}
 
-  .card{background:var(--card);border-radius:16px;padding:15px 16px;border:1px solid var(--line);transition:box-shadow .15s}
+  .card{background:var(--card);border-radius:16px;padding:15px 16px;border:1px solid var(--line);transition:box-shadow .15s;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .card input,.card textarea{-webkit-user-select:text;user-select:text}
   .card.dragging{box-shadow:0 10px 32px rgba(0,0,0,.5);border-color:rgba(167,139,250,.45);position:relative;z-index:5;transition:none}
   .card.blocked{opacity:.82}
 
   .card-head{display:flex;align-items:center;gap:6px;margin-bottom:10px}
-  .handle{
-    color:var(--faint);font-size:20px;line-height:1;padding:13px 12px 13px 4px;margin:-8px 0;cursor:grab;
-    touch-action:none;user-select:none;-webkit-user-select:none;flex-shrink:0;letter-spacing:1px;
-  }
   .acct-name{font-size:18px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .ename{background:none;border:none;color:var(--faint);font-size:15px;cursor:pointer;padding:13px 10px;margin:-8px 0;flex-shrink:0;line-height:1;font:inherit}
   .ename:active{color:var(--purple)}
@@ -113,9 +111,20 @@
   .blank p{font-size:13.5px;color:var(--mute);line-height:1.6;margin-bottom:18px}
   .blank .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 
-  /* sync panel */
-  .sync{max-width:560px;margin:20px auto 0;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-  .sync-head{display:flex;justify-content:space-between;align-items:center;padding:13px 15px;cursor:pointer}
+  /* pull-to-refresh */
+  .ptr{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;z-index:40;pointer-events:none;
+    padding-top:calc(10px + env(safe-area-inset-top));transform:translateY(-80px);transition:transform .15s}
+  .ptr span{background:var(--card);border:1px solid rgba(167,139,250,.4);border-radius:99px;color:var(--purple);
+    font-size:13px;font-weight:550;padding:9px 16px;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+
+  /* header warning line */
+  .warnline{font-size:12px;color:var(--amber)}
+  .warnline:empty{display:none}
+
+  /* sync panel (hidden behind the ⚙︎ button) */
+  .sync{max-width:560px;margin:20px auto 0;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:none}
+  .sync.show{display:block}
+  .sync-head{display:flex;justify-content:space-between;align-items:center;padding:13px 15px}
   .sync-head .lab{font-size:13.5px;font-weight:600;color:var(--ink2);display:flex;align-items:center;gap:8px}
   .sync-head .st{font-size:12px;color:var(--mute)}
   .sync-body{padding:0 15px 15px;display:none}
@@ -152,18 +161,22 @@
       <div class="title">Account tracker</div>
       <div class="summary" id="summary"></div>
       <div class="autoline" id="autoLine"></div>
+      <div class="warnline" id="warnLine"></div>
     </div>
+    <button class="addbtn ghost" id="gearBtn" title="Sync &amp; backup">⚙︎</button>
     <button class="addbtn" id="addBtn">+ Account</button>
   </div>
   <div class="grid" id="grid"></div>
 </div>
+
+<div class="ptr" id="ptr"><span id="ptrTxt">↓ Pull to refresh</span></div>
 
 <div class="sync" id="sync">
   <div class="sync-head" id="syncHead">
     <span class="lab">☁︎ Sync &amp; backup</span>
     <span class="st" id="syncSt"></span>
   </div>
-  <div class="sync-body" id="syncBody">
+  <div class="sync-body open" id="syncBody">
     <div class="hint">
       One-tap backup of your data to your private GitHub repo, versioned by date.
       Paste a fine-grained token scoped to <b>claude-tracker-backups</b> (Contents: read &amp; write).
@@ -184,7 +197,7 @@
 </div>
 
 <div class="foot">
-  Tap a bar to update · resets clear themselves · ready accounts rise to the top, drag ⠿ to reorder within a group.<br>
+  Tap a bar to update · hold a card, then drag to reorder · pull down to refresh.<br>
   <button id="updBtn">⟳ Check for updates</button>
 </div>
 
@@ -393,7 +406,7 @@ function cardHtml(a,now){
   else status='<span class="status wait">Maxed · set reset</span>';
 
   var h='<div class="card'+(blocked?" blocked":"")+'" data-id="'+a.id+'" data-group="'+(blocked?"b":"r")+'">'
-    +'<div class="card-head"><span class="handle">⠿</span>'
+    +'<div class="card-head">'
     +'<span class="acct-name">'+esc(a.name)+'</span>'
     +'<button class="ename" data-act="rename" title="Rename account">✎</button>'+status
     +'<button class="del" data-act="delacct" title="Delete account">✕</button></div>';
@@ -580,90 +593,116 @@ grid.addEventListener("change",function(e){
   if(e.target.hasAttribute("data-slide")||e.target.hasAttribute("data-numin"))render();
 });
 
-// ---- drag to reorder (within same ready/blocked group) ------------------
-// The card follows the finger (transform), displaced cards slide aside
-// (FLIP), the page auto-scrolls near the edges, and a finished drag
-// suppresses the click it would otherwise generate.
-var dragEndAt=0;
-grid.addEventListener("pointerdown",function(e){
-  var handle=e.target.closest(".handle");
-  if(!handle)return;
-  e.preventDefault();
-  var card=handle.closest(".card");
-  var group=card.dataset.group;
-  var startDocY=e.clientY+window.scrollY;
-  var lastClientY=e.clientY;
-  var originY=0, dragging=false, scrollVel=0, rafId=null;
-  try{handle.setPointerCapture(e.pointerId);}catch(err){}
+// ---- reorder: press and hold anywhere on a card, then drag ---------------
+// Long-press (380ms, still finger) lifts the card; it then follows the
+// finger while siblings slide aside. All geometry uses offsetTop (layout
+// positions, never mid-animation rects) so cards can't get stuck
+// overlapping. A lift always suppresses the click underneath it.
+var dragEndAt=0, cardDragActive=false, pressActive=false;
+// while a card is lifted, the page must not scroll under the finger
+document.addEventListener("touchmove",function(e){if(cardDragActive)e.preventDefault();},{passive:false});
 
-  function position(){
-    card.style.transform="translateY("+(lastClientY+window.scrollY-startDocY+originY)+"px) scale(1.015)";
+// NOTE: no setPointerCapture here — capturing makes the browser retarget the
+// subsequent click to the card, which would kill every button inside it.
+// Document-level listeners track the press instead.
+grid.addEventListener("pointerdown",function(e){
+  var card=e.target.closest(".card");
+  if(!card||pressActive)return;
+  if(e.target.closest("input,textarea,select"))return; // sliders & fields keep native behavior
+  pressActive=true;
+  var pid=e.pointerId;
+  var group=card.dataset.group;
+  var startClientY=e.clientY, lastClientY=e.clientY;
+  var lifted=false, pressTimer=null, rafId=null, scrollVel=0;
+  var gridTop=0, grabOffset=0, desiredTop=0;
+
+  function lift(){
+    pressTimer=null;
+    lifted=true; cardDragActive=true;
+    gridTop=grid.getBoundingClientRect().top+window.scrollY;
+    grabOffset=lastClientY+window.scrollY-gridTop-card.offsetTop;
+    card.classList.add("dragging");
+    document.body.style.userSelect="none";
+    position();
+    rafId=requestAnimationFrame(tick);
   }
-  function flip(el,fromTop){
-    var dy=fromTop-el.getBoundingClientRect().top;
-    if(!dy)return;
-    el.style.transition="none";
-    el.style.transform="translateY("+dy+"px)";
-    requestAnimationFrame(function(){
-      el.style.transition="transform .18s ease";
-      el.style.transform="";
-    });
+  function position(){
+    desiredTop=lastClientY+window.scrollY-gridTop-grabOffset;
+    card.style.transform="translateY("+(desiredTop-card.offsetTop)+"px) scale(1.02)";
   }
   function reorderCheck(){
-    var siblings=[].slice.call(grid.querySelectorAll('.card[data-group="'+group+'"]')).filter(function(c){return c!==card;});
-    for(var i=0;i<siblings.length;i++){
-      var sib=siblings[i];
-      var r=sib.getBoundingClientRect();
-      var mid=r.top+r.height/2;
-      var cTop=card.getBoundingClientRect().top;
-      var moved=false;
-      if(lastClientY<mid&&cTop>r.top){grid.insertBefore(card,sib);moved=true;}
-      else if(lastClientY>mid&&cTop<r.top){grid.insertBefore(card,sib.nextSibling);moved=true;}
-      if(moved){
-        // keep the card glued to the finger despite its new layout slot
-        originY-=(card.getBoundingClientRect().top-cTop);
-        position();
-        flip(sib,r.top);
+    var mid=desiredTop+card.offsetHeight/2; // visual center, in grid layout coords
+    var sibs=[].slice.call(grid.querySelectorAll('.card[data-group="'+group+'"]')).filter(function(c){return c!==card;});
+    for(var i=0;i<sibs.length;i++){
+      var sib=sibs[i];
+      var sMid=sib.offsetTop+sib.offsetHeight/2;
+      var cardAfterSib=!!(card.compareDocumentPosition(sib)&Node.DOCUMENT_POSITION_PRECEDING);
+      var sibFrom=null;
+      if(cardAfterSib&&mid<sMid){sibFrom=sib.getBoundingClientRect().top;grid.insertBefore(card,sib);}
+      else if(!cardAfterSib&&mid>sMid){sibFrom=sib.getBoundingClientRect().top;grid.insertBefore(card,sib.nextSibling);}
+      if(sibFrom!==null){
+        position(); // card's layout slot changed; re-glue to the finger
+        var dy=sibFrom-sib.getBoundingClientRect().top;
+        if(dy){
+          sib.style.transition="none";
+          sib.style.transform="translateY("+dy+"px)";
+          requestAnimationFrame(function(){sib.style.transition="transform .18s ease";sib.style.transform="";});
+        }
         break;
       }
     }
   }
-  function tickScroll(){
+  function tick(){
     if(scrollVel){window.scrollBy(0,scrollVel);position();reorderCheck();}
-    if(dragging)rafId=requestAnimationFrame(tickScroll);
+    if(lifted)rafId=requestAnimationFrame(tick);
   }
   function onMove(ev){
+    if(ev.pointerId!==pid)return;
     lastClientY=ev.clientY;
-    if(!dragging){
-      if(Math.abs(ev.clientY+window.scrollY-startDocY)<6)return; // a stray tap does nothing
-      dragging=true;
-      card.classList.add("dragging");
-      document.body.style.userSelect="none";
-      rafId=requestAnimationFrame(tickScroll);
+    if(!lifted){
+      // moved before the hold finished: it's a scroll or a tap, not a drag
+      if(Math.abs(ev.clientY-startClientY)>10)cleanup(false);
+      return;
     }
     var vh=window.innerHeight;
     scrollVel=ev.clientY<90?-Math.ceil((90-ev.clientY)/7):ev.clientY>vh-90?Math.ceil((ev.clientY-(vh-90))/7):0;
     position();
     reorderCheck();
   }
-  function onUp(){
-    handle.removeEventListener("pointermove",onMove);
-    handle.removeEventListener("pointerup",onUp);
-    handle.removeEventListener("pointercancel",onUp);
-    if(rafId)cancelAnimationFrame(rafId);
-    document.body.style.userSelect="";
-    if(!dragging)return;
-    dragEndAt=Date.now();
-    card.classList.remove("dragging");
+  function cleanup(wasLifted){
+    document.removeEventListener("pointermove",onMove);
+    document.removeEventListener("pointerup",onUp);
+    document.removeEventListener("pointercancel",onCancel);
+    if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}
+    if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+    pressActive=false;
+    if(wasLifted){
+      lifted=false; cardDragActive=false;
+      dragEndAt=Date.now();
+      document.body.style.userSelect="";
+      card.classList.remove("dragging");
+    }
+  }
+  function onUp(ev){
+    if(ev.pointerId!==pid)return;
+    if(!lifted){cleanup(false);return;}
+    cleanup(true);
     card.style.transition="transform .18s ease";
     card.style.transform="";
     setTimeout(function(){card.style.transition="";},220);
     state.order=[].slice.call(grid.querySelectorAll(".card")).map(function(c){return c.dataset.id;});
     save();
   }
-  handle.addEventListener("pointermove",onMove);
-  handle.addEventListener("pointerup",onUp);
-  handle.addEventListener("pointercancel",onUp);
+  function onCancel(ev){
+    if(ev.pointerId!==pid)return;
+    var was=lifted;
+    cleanup(was);
+    if(was)card.style.transform="";
+  }
+  pressTimer=setTimeout(lift,380);
+  document.addEventListener("pointermove",onMove);
+  document.addEventListener("pointerup",onUp);
+  document.addEventListener("pointercancel",onCancel);
 });
 
 // ---- export / import ----------------------------------------------------
@@ -744,12 +783,18 @@ function restoreLatest(){
 }
 function updateSyncStatus(){
   var st=document.getElementById("syncSt");
+  var warn=document.getElementById("warnLine");
   st.className="st";
+  warn.textContent="";
   if(!token()){st.textContent="not set up";return;}
   var last=+lget(LASTBK_KEY)||0;
   if(!last){st.textContent="token saved";return;}
   var days=Math.floor((Date.now()-last)/DAY);
-  if(days>=2){st.textContent="⚠ backed up "+days+"d ago";st.className="st warn";return;}
+  if(days>=2){
+    st.textContent="⚠ backed up "+days+"d ago";st.className="st warn";
+    warn.textContent="⚠ Backup is "+days+" days old — tap ⚙︎ to check";
+    return;
+  }
   st.textContent=days<=0?"backed up today":"backed up yesterday";
 }
 function maybeAutoBackup(){
@@ -846,8 +891,44 @@ document.addEventListener("visibilitychange",function(){
   if(document.visibilityState==="visible")pullStatus();
 });
 
-document.getElementById("syncHead").addEventListener("click",function(){
-  document.getElementById("syncBody").classList.toggle("open");
+document.getElementById("gearBtn").addEventListener("click",function(){
+  document.getElementById("sync").classList.toggle("show");
+});
+
+// ---- pull down to refresh (like Twitter/X) -------------------------------
+var ptrEl=document.getElementById("ptr"),ptrTxt=document.getElementById("ptrTxt");
+var ptrStartY=null,ptrArmed=false,ptrBusy=false;
+function ptrHide(){
+  ptrStartY=null;ptrArmed=false;
+  ptrEl.style.transition="transform .15s";
+  ptrEl.style.transform="";
+}
+window.addEventListener("touchstart",function(e){
+  if(cardDragActive||ptrBusy)return;
+  ptrStartY=window.scrollY<=0?e.touches[0].clientY:null;
+},{passive:true});
+window.addEventListener("touchmove",function(e){
+  if(ptrStartY==null||cardDragActive||ptrBusy)return;
+  var dy=e.touches[0].clientY-ptrStartY;
+  if(dy<=0||window.scrollY>0){ptrHide();return;}
+  if(e.cancelable)e.preventDefault();
+  var pull=Math.min(95,dy*0.45);
+  ptrArmed=pull>=55;
+  ptrTxt.textContent=ptrArmed?"↻ Release to refresh":"↓ Pull to refresh";
+  ptrEl.style.transition="none";
+  ptrEl.style.transform="translateY("+(pull-80)+"px)";
+},{passive:false});
+window.addEventListener("touchend",function(){
+  if(ptrStartY==null)return;
+  if(ptrArmed&&!ptrBusy){
+    ptrBusy=true;
+    ptrTxt.textContent="↻ Checking…";
+    ptrEl.style.transition="transform .15s";
+    ptrEl.style.transform="translateY(0)";
+    lastPullTry=0;pullStatus();
+    updateSyncStatus();
+    setTimeout(function(){ptrHide();ptrBusy=false;updateAutoLine();},1200);
+  }else ptrHide();
 });
 document.getElementById("tokSave").addEventListener("click",function(){
   var v=document.getElementById("tokInput").value.trim();
