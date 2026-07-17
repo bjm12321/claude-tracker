@@ -37,22 +37,25 @@
   .grid{display:flex;flex-direction:column;gap:12px}
 
   .card{background:var(--card);border-radius:16px;padding:15px 16px;border:1px solid var(--line);transition:box-shadow .15s}
-  .card.dragging{box-shadow:0 8px 28px rgba(0,0,0,.45);border-color:rgba(167,139,250,.45);position:relative;z-index:5}
+  .card.dragging{box-shadow:0 10px 32px rgba(0,0,0,.5);border-color:rgba(167,139,250,.45);position:relative;z-index:5;transition:none}
   .card.blocked{opacity:.82}
 
-  .card-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .card-head{display:flex;align-items:center;gap:6px;margin-bottom:10px}
   .handle{
-    color:var(--faint);font-size:17px;line-height:1;padding:6px 6px 6px 2px;cursor:grab;
+    color:var(--faint);font-size:20px;line-height:1;padding:13px 12px 13px 4px;margin:-8px 0;cursor:grab;
     touch-action:none;user-select:none;-webkit-user-select:none;flex-shrink:0;letter-spacing:1px;
   }
-  .acct-name{font-size:18px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;background:none;border:none;color:inherit;text-align:left;font:inherit;font-weight:650}
-  .del{background:none;border:none;color:var(--faint);font-size:16px;cursor:pointer;padding:6px 4px;flex-shrink:0;line-height:1}
+  .acct-name{font-size:18px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ename{background:none;border:none;color:var(--faint);font-size:15px;cursor:pointer;padding:13px 10px;margin:-8px 0;flex-shrink:0;line-height:1;font:inherit}
+  .ename:active{color:var(--purple)}
+  .del{background:none;border:none;color:var(--faint);font-size:17px;cursor:pointer;padding:13px 6px 13px 10px;margin:-8px -6px -8px 0;flex-shrink:0;line-height:1}
   .del:active{color:var(--red)}
   .status{font-size:12px;font-weight:650;letter-spacing:.03em;padding:4px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0}
   .status.ready{color:#c9b6f7;background:rgba(139,111,216,.16);border:1px solid rgba(139,111,216,.42)}
   .status.wait{color:var(--mute);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)}
 
-  .limit-row{display:flex;align-items:center;gap:11px;width:100%;background:none;border:none;color:inherit;padding:8px 0 3px;cursor:pointer;text-align:left;font:inherit}
+  .limit-row{display:flex;align-items:center;gap:11px;width:100%;background:none;border:none;color:inherit;padding:10px 0 4px;cursor:pointer;text-align:left;font:inherit}
+  .limit-row:active{opacity:.7}
   .limit-lab{display:flex;align-items:center;gap:6px;width:92px;flex-shrink:0}
   .limit-lab b{font-size:14px;font-weight:550;color:var(--ink2)}
   .ptag{font-size:9px;font-weight:750;letter-spacing:.06em;padding:2.5px 5px;border-radius:5px;border:1px solid;line-height:1}
@@ -70,8 +73,10 @@
   .num{width:56px;background:var(--card2);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--ink);padding:7px 8px;font-size:15px;text-align:right}
   .unit{font-size:13px;color:var(--mute)}
   .chips{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
-  .chip{background:var(--card2);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--ink2);padding:7px 12px;font-size:13px;cursor:pointer;font:inherit}
+  .chip{background:var(--card2);border:1px solid rgba(255,255,255,.12);border-radius:9px;color:var(--ink2);padding:10px 15px;font-size:13.5px;cursor:pointer;font:inherit}
+  .chip:active,.sbtn:active,.addbtn:active,.save:active,.padd:active{opacity:.65}
   .chip.hot{background:rgba(193,83,74,.15);border-color:rgba(193,83,74,.4);color:#e0a29c}
+  .chips.split{justify-content:space-between}
   .redit{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
   .rtitle{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px}
   .clab{font-size:13px;color:var(--mute)}
@@ -127,7 +132,7 @@
   .smsg.ok{color:var(--green)} .smsg.err{color:#e0a29c}
   .sync-head .st.warn{color:var(--amber)}
 
-  .autoline{font-size:11.5px;color:var(--mute);min-height:14px}
+  .autoline{font-size:11.5px;color:var(--mute);min-height:14px;cursor:pointer}
 
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom));
     background:var(--card);border:1px solid rgba(167,139,250,.45);border-radius:12px;padding:11px 14px 11px 16px;
@@ -349,8 +354,7 @@ function limitHtml(a,limit,now){
       +'<button class="chip" data-act="pct100" data-limit="'+limit+'">100%</button></div>';
     if(limit==="daily"){
       h+='<div class="redit"><div class="rtitle">Session reset</div>'
-        +'<div class="chips"><button class="chip hot" data-act="hit">Hit limit · back in 5h</button>'
-        +'<button class="chip" data-act="cleardaily">Clear</button></div>'
+        +'<div class="chips"><button class="chip hot" data-act="hit">Hit limit · back in 5h</button></div>'
         +'<div class="chips"><span class="clab">or resets in</span>'
         +'<input class="nsm" type="number" min="0" placeholder="h" data-ch="1">'
         +'<input class="nsm" type="number" min="0" max="59" placeholder="m" data-cm="1">'
@@ -366,6 +370,9 @@ function limitHtml(a,limit,now){
       h+='<div class="redit"><div class="rtitle">Fable end date · resets with Weekly until then</div><div class="chips">'
         +'<input class="tinput" type="date" value="'+(a.fableEndsAt?toDateInput(a.fableEndsAt):"")+'" data-fdate="1"></div></div>';
     }
+    h+='<div class="chips split" style="margin-top:13px">'
+      +(limit==="daily"?'<button class="chip" data-act="cleardaily">Clear reset</button>':'<span></span>')
+      +'<button class="chip" data-act="toggle" data-limit="'+limit+'">✓ Done</button></div>';
     h+='</div>';
   }
   return h;
@@ -387,7 +394,8 @@ function cardHtml(a,now){
 
   var h='<div class="card'+(blocked?" blocked":"")+'" data-id="'+a.id+'" data-group="'+(blocked?"b":"r")+'">'
     +'<div class="card-head"><span class="handle">⠿</span>'
-    +'<button class="acct-name" data-act="rename">'+esc(a.name)+'</button>'+status
+    +'<span class="acct-name">'+esc(a.name)+'</span>'
+    +'<button class="ename" data-act="rename" title="Rename account">✎</button>'+status
     +'<button class="del" data-act="delacct" title="Delete account">✕</button></div>';
   LIMITS.forEach(function(l){h+=limitHtml(a,l,now);});
 
@@ -495,6 +503,7 @@ document.getElementById("addBtn").addEventListener("click",addAccount);
 function cardOf(el){var c=el.closest(".card");return c?acct(c.dataset.id):null;}
 
 grid.addEventListener("click",function(e){
+  if(Date.now()-dragEndAt<350)return; // a drag never triggers what's under it
   var btn=e.target.closest("[data-act]");
   if(!btn)return;
   var act=btn.dataset.act;
@@ -572,29 +581,83 @@ grid.addEventListener("change",function(e){
 });
 
 // ---- drag to reorder (within same ready/blocked group) ------------------
+// The card follows the finger (transform), displaced cards slide aside
+// (FLIP), the page auto-scrolls near the edges, and a finished drag
+// suppresses the click it would otherwise generate.
+var dragEndAt=0;
 grid.addEventListener("pointerdown",function(e){
   var handle=e.target.closest(".handle");
   if(!handle)return;
   e.preventDefault();
   var card=handle.closest(".card");
   var group=card.dataset.group;
-  card.classList.add("dragging");
+  var startDocY=e.clientY+window.scrollY;
+  var lastClientY=e.clientY;
+  var originY=0, dragging=false, scrollVel=0, rafId=null;
   try{handle.setPointerCapture(e.pointerId);}catch(err){}
-  function onMove(ev){
+
+  function position(){
+    card.style.transform="translateY("+(lastClientY+window.scrollY-startDocY+originY)+"px) scale(1.015)";
+  }
+  function flip(el,fromTop){
+    var dy=fromTop-el.getBoundingClientRect().top;
+    if(!dy)return;
+    el.style.transition="none";
+    el.style.transform="translateY("+dy+"px)";
+    requestAnimationFrame(function(){
+      el.style.transition="transform .18s ease";
+      el.style.transform="";
+    });
+  }
+  function reorderCheck(){
     var siblings=[].slice.call(grid.querySelectorAll('.card[data-group="'+group+'"]')).filter(function(c){return c!==card;});
-    var cr=card.getBoundingClientRect();
     for(var i=0;i<siblings.length;i++){
-      var r=siblings[i].getBoundingClientRect();
+      var sib=siblings[i];
+      var r=sib.getBoundingClientRect();
       var mid=r.top+r.height/2;
-      if(ev.clientY<mid&&cr.top>r.top){grid.insertBefore(card,siblings[i]);break;}
-      if(ev.clientY>mid&&cr.top<r.top){grid.insertBefore(card,siblings[i].nextSibling);break;}
+      var cTop=card.getBoundingClientRect().top;
+      var moved=false;
+      if(lastClientY<mid&&cTop>r.top){grid.insertBefore(card,sib);moved=true;}
+      else if(lastClientY>mid&&cTop<r.top){grid.insertBefore(card,sib.nextSibling);moved=true;}
+      if(moved){
+        // keep the card glued to the finger despite its new layout slot
+        originY-=(card.getBoundingClientRect().top-cTop);
+        position();
+        flip(sib,r.top);
+        break;
+      }
     }
   }
+  function tickScroll(){
+    if(scrollVel){window.scrollBy(0,scrollVel);position();reorderCheck();}
+    if(dragging)rafId=requestAnimationFrame(tickScroll);
+  }
+  function onMove(ev){
+    lastClientY=ev.clientY;
+    if(!dragging){
+      if(Math.abs(ev.clientY+window.scrollY-startDocY)<6)return; // a stray tap does nothing
+      dragging=true;
+      card.classList.add("dragging");
+      document.body.style.userSelect="none";
+      rafId=requestAnimationFrame(tickScroll);
+    }
+    var vh=window.innerHeight;
+    scrollVel=ev.clientY<90?-Math.ceil((90-ev.clientY)/7):ev.clientY>vh-90?Math.ceil((ev.clientY-(vh-90))/7):0;
+    position();
+    reorderCheck();
+  }
   function onUp(){
-    card.classList.remove("dragging");
     handle.removeEventListener("pointermove",onMove);
     handle.removeEventListener("pointerup",onUp);
     handle.removeEventListener("pointercancel",onUp);
+    if(rafId)cancelAnimationFrame(rafId);
+    document.body.style.userSelect="";
+    if(!dragging)return;
+    dragEndAt=Date.now();
+    card.classList.remove("dragging");
+    card.style.transition="transform .18s ease";
+    card.style.transform="";
+    setTimeout(function(){card.style.transition="";},220);
     state.order=[].slice.call(grid.querySelectorAll(".card")).map(function(c){return c.dataset.id;});
     save();
   }
@@ -773,6 +836,12 @@ function updateAutoLine(){
 }
 setInterval(pullStatus,STATUS_PULL_MS);
 setInterval(updateAutoLine,30000);
+if(autoLineEl)autoLineEl.addEventListener("click",function(){
+  if(!token())return;
+  autoLineEl.textContent="checking…";
+  lastPullTry=0;pullStatus();
+  setTimeout(updateAutoLine,2000);
+});
 document.addEventListener("visibilitychange",function(){
   if(document.visibilityState==="visible")pullStatus();
 });
