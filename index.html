@@ -168,7 +168,8 @@
 </div>
 
 <div class="foot">
-  Tap a bar to update · resets clear themselves · ready accounts rise to the top, drag ⠿ to reorder within a group.
+  Tap a bar to update · resets clear themselves · ready accounts rise to the top, drag ⠿ to reorder within a group.<br>
+  <button id="updBtn">⟳ Check for updates</button>
 </div>
 
 <script>
@@ -649,9 +650,38 @@ loadData().then(function(d){
   maybeAutoBackup();
 });
 
-// ---- service worker (standalone hosting only) --------------------------
+// ---- service worker + in-app update (fullscreen PWA has no reload button) ----
+var swReg=null;
+function setUpd(t,disabled){var b=document.getElementById("updBtn");if(b){b.textContent=t;b.disabled=!!disabled;}}
 if("serviceWorker" in navigator&&location.protocol==="https:"){
-  window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});
+  // If a new service worker takes control, reload once to show the update.
+  var hadController=!!navigator.serviceWorker.controller, reloading=false;
+  navigator.serviceWorker.addEventListener("controllerchange",function(){
+    if(!hadController){hadController=true;return;} // first-ever install, don't reload
+    if(reloading)return;reloading=true;location.reload();
+  });
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("sw.js").then(function(reg){
+      swReg=reg;
+      // when a waiting worker appears, tell it to activate (triggers controllerchange -> reload)
+      function watch(w){if(!w)return;w.addEventListener("statechange",function(){if(w.state==="installed"&&navigator.serviceWorker.controller){setUpd("⟳ Update ready — tap",false);w.postMessage({type:"SKIP_WAITING"});}});}
+      if(reg.waiting){reg.waiting.postMessage({type:"SKIP_WAITING"});}
+      reg.addEventListener("updatefound",function(){watch(reg.installing);});
+      // check for a new version whenever the app is reopened/refocused
+      document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")reg.update().catch(function(){});});
+    }).catch(function(){});
+  });
+}
+// Manual button: force an update check, then reload (always pulls the latest).
+var updBtn=document.getElementById("updBtn");
+if(updBtn){
+  updBtn.addEventListener("click",function(){
+    setUpd("⟳ Checking…",true);
+    var go=function(){location.reload();};
+    if(swReg){swReg.update().then(go,go);}
+    else if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.update().catch(function(){});}));}).then(go,go);}
+    else go();
+  });
 }
 })();
 </script>

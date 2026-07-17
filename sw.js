@@ -1,12 +1,17 @@
 /* Account Tracker service worker.
    index.html is network-first so a push to GitHub Pages shows up on next load;
    icons/manifest are cache-first. Offline falls back to the cached shell. */
-var CACHE = "tracker-v2";
+var CACHE = "tracker-v3";
 var ASSETS = ["./", "index.html", "manifest.webmanifest", "icon192.png", "icon512.png", "appletouchicon.png"];
 
 self.addEventListener("install", function(e){
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(ASSETS).catch(function(){}); }));
+});
+
+// Let the page trigger an immediate activation of a waiting worker.
+self.addEventListener("message", function(e){
+  if(e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", function(e){
