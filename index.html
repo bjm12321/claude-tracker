@@ -125,6 +125,16 @@
   .sbtn:disabled{opacity:.5}
   .smsg{font-size:12.5px;color:var(--mute);margin-top:10px;min-height:16px;line-height:1.5}
   .smsg.ok{color:var(--green)} .smsg.err{color:#e0a29c}
+  .sync-head .st.warn{color:var(--amber)}
+
+  .autoline{font-size:11.5px;color:var(--mute);min-height:14px}
+
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom));
+    background:var(--card);border:1px solid rgba(167,139,250,.45);border-radius:12px;padding:11px 14px 11px 16px;
+    display:flex;align-items:center;gap:14px;box-shadow:0 8px 28px rgba(0,0,0,.5);z-index:50;
+    font-size:14px;color:var(--ink);white-space:nowrap;max-width:calc(100vw - 28px)}
+  .toast button{background:var(--purple-deep);border:none;border-radius:8px;color:#fff;padding:7px 15px;
+    font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;flex-shrink:0}
 
   .foot{margin:16px auto 0;font-size:12px;color:var(--faint);text-align:center;line-height:1.7;max-width:560px}
   .foot button{background:none;border:none;color:var(--mute);text-decoration:underline;cursor:pointer;font:inherit;font-size:12px;padding:2px 4px}
@@ -136,6 +146,7 @@
     <div class="head-l">
       <div class="title">Account tracker</div>
       <div class="summary" id="summary"></div>
+      <div class="autoline" id="autoLine"></div>
     </div>
     <button class="addbtn" id="addBtn">+ Account</button>
   </div>
@@ -183,8 +194,11 @@ var MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 var KEY="accounts_v4";
 var TOKEN_KEY="tracker_gh_token";
 var LASTBK_KEY="tracker_last_backup";
+var UNDO_KEY="tracker_undo_v1";
+var AUTOUPD_KEY="tracker_last_autoupd";
 var BACKUP_REPO="bjm12321/claude-tracker-backups";
 var AUTO_BACKUP_MS=20*HOUR;
+var STATUS_PULL_MS=5*60000;
 
 function uid(){return Math.random().toString(36).slice(2,9);}
 function esc(t){var d=document.createElement("div");d.textContent=t==null?"":t;return d.innerHTML;}
@@ -242,6 +256,41 @@ window.addEventListener("visibilitychange",function(){if(document.visibilityStat
 window.addEventListener("pagehide",flushSave);
 function lget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+
+// ---- undo safety net ---------------------------------------------------
+// One snapshot slot: taken right before anything destructive (delete account,
+// import, restore). The toast's Undo swaps the whole state back.
+function snapshot(){
+  lset(UNDO_KEY,JSON.stringify({at:Date.now(),data:state}));
+}
+var toastEl=null,toastTimer=null;
+function hideToast(){
+  if(toastEl){toastEl.remove();toastEl=null;}
+  if(toastTimer){clearTimeout(toastTimer);toastTimer=null;}
+}
+function showUndoToast(msg,ms){
+  hideToast();
+  toastEl=document.createElement("div");
+  toastEl.className="toast";
+  var span=document.createElement("span");
+  span.textContent=msg;
+  var btn=document.createElement("button");
+  btn.textContent="Undo";
+  btn.addEventListener("click",function(){
+    var raw=lget(UNDO_KEY);
+    if(raw){
+      try{
+        var snap=JSON.parse(raw);
+        if(snap&&snap.data&&snap.data.accounts&&snap.data.order){state=snap.data;save();render();}
+      }catch(e){}
+    }
+    hideToast();
+  });
+  toastEl.appendChild(span);
+  toastEl.appendChild(btn);
+  document.body.appendChild(toastEl);
+  toastTimer=setTimeout(hideToast,ms||8000);
+}
 
 // ---- state -------------------------------------------------------------
 function newAccount(name){
@@ -425,11 +474,13 @@ function renameAccount(a){
   a.name=name;save();render();
 }
 function deleteAccount(a){
-  if(!window.confirm("Delete “"+a.name+"” and its projects? This can't be undone."))return;
+  if(!window.confirm("Delete “"+a.name+"” and its projects?"))return;
+  snapshot();
   state.accounts=state.accounts.filter(function(x){return x.id!==a.id;});
   state.order=state.order.filter(function(id){return id!==a.id;});
   if(ui.draft&&ui.draft.accId===a.id)ui.draft=null;
   save();render();
+  showUndoToast("Account deleted",8000);
 }
 document.getElementById("addBtn").addEventListener("click",addAccount);
 
@@ -557,7 +608,11 @@ function doImport(){
   if(!s)return;
   try{
     var d=JSON.parse(s);
-    if(d&&d.accounts&&d.order){state=d;save();render();smsg("Imported "+d.accounts.length+" account(s).","ok");}
+    if(d&&d.accounts&&d.order){
+      snapshot();
+      state=d;save();render();smsg("Imported "+d.accounts.length+" account(s).","ok");
+      showUndoToast("Data replaced",15000);
+    }
     else{alert("That doesn't look like tracker data.");}
   }catch(e){alert("Couldn't read that data — make sure the full export was pasted.");}
 }
@@ -611,23 +666,89 @@ function restoreLatest(){
       var d=JSON.parse(txt);
       if(!d||!d.accounts||!d.order)throw new Error("Backup file is not valid tracker data.");
       if(!window.confirm("Restore "+latest.name+" ("+d.accounts.length+" accounts)? This replaces what's on this device."))return;
+      snapshot();
       state=d;save();render();smsg("Restored "+latest.name+" ✓","ok");
+      showUndoToast("Data replaced",15000);
     });
   }).catch(function(e){smsg("Restore failed: "+e.message,"err");});
 }
 function updateSyncStatus(){
   var st=document.getElementById("syncSt");
+  st.className="st";
   if(!token()){st.textContent="not set up";return;}
   var last=+lget(LASTBK_KEY)||0;
   if(!last){st.textContent="token saved";return;}
   var days=Math.floor((Date.now()-last)/DAY);
-  st.textContent=days<=0?"backed up today":days===1?"backed up yesterday":"backed up "+days+"d ago";
+  if(days>=2){st.textContent="⚠ backed up "+days+"d ago";st.className="st warn";return;}
+  st.textContent=days<=0?"backed up today":"backed up yesterday";
 }
 function maybeAutoBackup(){
   if(!token()||!state||!state.accounts.length)return;
   var last=+lget(LASTBK_KEY)||0;
   if(Date.now()-last>=AUTO_BACKUP_MS)backupNow(true);
 }
+
+// ---- status inbox: Claude sessions push status/<slug>.json to the backups
+// repo; the app pulls and applies anything newer than what it has ----------
+function slugOf(name){return String(name).trim().toLowerCase().replace(/\s+/g,"-");}
+function clampPct(v){return Math.max(0,Math.min(100,Math.round(v)));}
+function applyStatus(a,s){
+  if(!s||typeof s.updatedAt!=="number")return false;
+  if(a.lastStatusAt&&s.updatedAt<=a.lastStatusAt)return false;
+  if(typeof s.daily==="number")a.daily.pct=clampPct(s.daily);
+  if(typeof s.dailyResetAt==="number")a.daily.resetAt=s.dailyResetAt>Date.now()?s.dailyResetAt:null;
+  else if(s.dailyResetAt===null)a.daily.resetAt=null;
+  if(typeof s.weekly==="number")a.weekly.pct=clampPct(s.weekly);
+  if(typeof s.fable==="number")a.fable.pct=clampPct(s.fable);
+  a.lastStatusAt=s.updatedAt;
+  return true;
+}
+var pullBusy=false,lastPullTry=0;
+function pullStatus(){
+  if(!token()||!state||!state.accounts.length||pullBusy)return;
+  if(Date.now()-lastPullTry<60000)return;
+  lastPullTry=Date.now();
+  pullBusy=true;
+  ghGet("status").then(function(r){
+    if(!r.ok)throw new Error("no status folder");
+    return r.json();
+  }).then(function(list){
+    var bySlug={};
+    state.accounts.forEach(function(a){bySlug[slugOf(a.name)]=a;});
+    var jobs=(list||[]).filter(function(f){
+      return f.type==="file"&&/\.json$/i.test(f.name)&&bySlug[f.name.replace(/\.json$/i,"")];
+    }).map(function(f){
+      var a=bySlug[f.name.replace(/\.json$/i,"")];
+      return fetch(f.download_url).then(function(r){return r.json();})
+        .then(function(s){return applyStatus(a,s);})
+        .catch(function(){return false;});
+    });
+    return Promise.all(jobs);
+  }).then(function(results){
+    pullBusy=false;
+    if(results.some(function(x){return x;})){
+      lset(AUTOUPD_KEY,String(Date.now()));
+      save();render();updateAutoLine();
+    }
+  }).catch(function(){pullBusy=false;});
+}
+var autoLineEl=document.getElementById("autoLine");
+function updateAutoLine(){
+  if(!autoLineEl)return;
+  var last=+lget(AUTOUPD_KEY)||0;
+  if(!last){autoLineEl.textContent="";return;}
+  var diff=Date.now()-last,t;
+  if(diff<90000)t="just now";
+  else if(diff<HOUR)t=Math.floor(diff/60000)+"m ago";
+  else if(diff<DAY)t=Math.floor(diff/HOUR)+"h ago";
+  else t=Math.floor(diff/DAY)+"d ago";
+  autoLineEl.textContent="auto-updated "+t;
+}
+setInterval(pullStatus,STATUS_PULL_MS);
+setInterval(updateAutoLine,30000);
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState==="visible")pullStatus();
+});
 
 document.getElementById("syncHead").addEventListener("click",function(){
   document.getElementById("syncBody").classList.toggle("open");
@@ -647,7 +768,9 @@ loadData().then(function(d){
   autoClear(Date.now());
   render();
   updateSyncStatus();
+  updateAutoLine();
   maybeAutoBackup();
+  pullStatus();
 });
 
 // ---- service worker + in-app update (fullscreen PWA has no reload button) ----
