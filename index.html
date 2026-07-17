@@ -456,6 +456,9 @@ setInterval(function(){
 },1000);
 
 // ---- account CRUD ------------------------------------------------------
+function unignoreSlug(name){
+  if(state.ignoredSlugs){var s=slugOf(name);state.ignoredSlugs=state.ignoredSlugs.filter(function(x){return x!==s;});}
+}
 function addAccount(){
   var name=window.prompt("Account name:");
   if(name==null)return;
@@ -464,6 +467,7 @@ function addAccount(){
   var a=newAccount(name);
   state.accounts.push(a);
   state.order.push(a.id);
+  unignoreSlug(name);
   save();render();
 }
 function renameAccount(a){
@@ -471,13 +475,16 @@ function renameAccount(a){
   if(name==null)return;
   name=name.trim();
   if(!name)return;
-  a.name=name;save();render();
+  a.name=name;unignoreSlug(name);save();render();
 }
 function deleteAccount(a){
   if(!window.confirm("Delete “"+a.name+"” and its projects?"))return;
   snapshot();
   state.accounts=state.accounts.filter(function(x){return x.id!==a.id;});
   state.order=state.order.filter(function(id){return id!==a.id;});
+  // remember the slug so the status inbox doesn't quietly re-create it
+  if(!state.ignoredSlugs)state.ignoredSlugs=[];
+  if(state.ignoredSlugs.indexOf(slugOf(a.name))<0)state.ignoredSlugs.push(slugOf(a.name));
   if(ui.draft&&ui.draft.accId===a.id)ui.draft=null;
   save();render();
   showUndoToast("Account deleted",8000);
@@ -700,12 +707,20 @@ function applyStatus(a,s){
   else if(s.dailyResetAt===null)a.daily.resetAt=null;
   if(typeof s.weekly==="number")a.weekly.pct=clampPct(s.weekly);
   if(typeof s.fable==="number")a.fable.pct=clampPct(s.fable);
+  if(s.project&&typeof s.project.title==="string"&&s.project.title.trim()){
+    var title=s.project.title.trim();
+    var note=typeof s.project.note==="string"?s.project.note:"";
+    var existing=null;
+    a.projects.forEach(function(p){if(!p.archived&&p.title.toLowerCase()===title.toLowerCase())existing=p;});
+    if(existing){if(note)existing.note=note;}
+    else a.projects.push({id:uid(),title:title,note:note,archived:false});
+  }
   a.lastStatusAt=s.updatedAt;
   return true;
 }
 var pullBusy=false,lastPullTry=0;
 function pullStatus(){
-  if(!token()||!state||!state.accounts.length||pullBusy)return;
+  if(!token()||!state||pullBusy)return;
   if(Date.now()-lastPullTry<60000)return;
   lastPullTry=Date.now();
   pullBusy=true;
@@ -715,12 +730,24 @@ function pullStatus(){
   }).then(function(list){
     var bySlug={};
     state.accounts.forEach(function(a){bySlug[slugOf(a.name)]=a;});
+    var ignored=state.ignoredSlugs||[];
     var jobs=(list||[]).filter(function(f){
-      return f.type==="file"&&/\.json$/i.test(f.name)&&bySlug[f.name.replace(/\.json$/i,"")];
+      return f.type==="file"&&/\.json$/i.test(f.name)&&ignored.indexOf(f.name.replace(/\.json$/i,""))<0;
     }).map(function(f){
-      var a=bySlug[f.name.replace(/\.json$/i,"")];
+      var slug=f.name.replace(/\.json$/i,"");
       return fetch(f.download_url).then(function(r){return r.json();})
-        .then(function(s){return applyStatus(a,s);})
+        .then(function(s){
+          var a=bySlug[slug];
+          if(!a){
+            // new account announced by the inbox — create it automatically
+            if(!s||typeof s.updatedAt!=="number")return false;
+            a=newAccount(typeof s.name==="string"&&s.name.trim()?s.name.trim():slug);
+            state.accounts.push(a);
+            state.order.push(a.id);
+            bySlug[slug]=a;
+          }
+          return applyStatus(a,s);
+        })
         .catch(function(){return false;});
     });
     return Promise.all(jobs);
@@ -758,6 +785,7 @@ document.getElementById("tokSave").addEventListener("click",function(){
   if(v){lset(TOKEN_KEY,v);document.getElementById("tokInput").value="";smsg("Token saved on this device.","ok");}
   else{try{localStorage.removeItem(TOKEN_KEY);}catch(e){}smsg("Token cleared.","ok");}
   updateSyncStatus();
+  lastPullTry=0;pullStatus();
 });
 document.getElementById("backupBtn").addEventListener("click",function(){backupNow(false);});
 document.getElementById("restoreBtn").addEventListener("click",restoreLatest);

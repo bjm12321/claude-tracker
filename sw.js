@@ -1,7 +1,7 @@
 /* Account Tracker service worker.
    index.html is network-first so a push to GitHub Pages shows up on next load;
    icons/manifest are cache-first. Offline falls back to the cached shell. */
-var CACHE = "tracker-v4";
+var CACHE = "tracker-v5";
 var ASSETS = ["./", "index.html", "manifest.webmanifest", "icon192.png", "icon512.png", "appletouchicon.png"];
 
 self.addEventListener("install", function(e){
