@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tracker">
+<meta name="theme-color" content="#262421">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Account tracker</title>
+<style>
+  :root{
+    --bg:#262421; --card:#2f2c28; --card2:#26231f;
+    --ink:#f0ede8; --ink2:#d8d3ca; --mute:#8a847b; --faint:#6b655d;
+    --line:rgba(255,255,255,0.06);
+    --purple:#a78bfa; --purple-deep:#8b6fd8;
+    --amber:#cf9a44; --red:#c1534a; --green:#7fae6f;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  html,body{background:var(--bg)}
+  body{
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color:var(--ink); padding:max(20px,env(safe-area-inset-top)) 14px 60px;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:560px;margin:0 auto}
+  .head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;padding:0 4px}
+  .head-l{min-width:0}
+  .title{font-size:20px;font-weight:650;letter-spacing:-0.01em}
+  .summary{font-size:13px;color:var(--purple)}
+  .addbtn{background:var(--purple-deep);border:none;border-radius:9px;color:#fff;padding:9px 15px;font-size:14px;font-weight:600;cursor:pointer;font:inherit;flex-shrink:0;white-space:nowrap}
+  .addbtn.ghost{background:var(--card);border:1px solid rgba(255,255,255,.12);color:var(--ink2)}
+  .grid{display:flex;flex-direction:column;gap:12px}
+
+  .card{background:var(--card);border-radius:16px;padding:15px 16px;border:1px solid var(--line);transition:box-shadow .15s}
+  .card.dragging{box-shadow:0 8px 28px rgba(0,0,0,.45);border-color:rgba(167,139,250,.45);position:relative;z-index:5}
+  .card.blocked{opacity:.82}
+
+  .card-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .handle{
+    color:var(--faint);font-size:17px;line-height:1;padding:6px 6px 6px 2px;cursor:grab;
+    touch-action:none;user-select:none;-webkit-user-select:none;flex-shrink:0;letter-spacing:1px;
+  }
+  .acct-name{font-size:18px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;background:none;border:none;color:inherit;text-align:left;font:inherit;font-weight:650}
+  .del{background:none;border:none;color:var(--faint);font-size:16px;cursor:pointer;padding:6px 4px;flex-shrink:0;line-height:1}
+  .del:active{color:var(--red)}
+  .status{font-size:12px;font-weight:650;letter-spacing:.03em;padding:4px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0}
+  .status.ready{color:#c9b6f7;background:rgba(139,111,216,.16);border:1px solid rgba(139,111,216,.42)}
+  .status.wait{color:var(--mute);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)}
+
+  .limit-row{display:flex;align-items:center;gap:11px;width:100%;background:none;border:none;color:inherit;padding:8px 0 3px;cursor:pointer;text-align:left;font:inherit}
+  .limit-lab{display:flex;align-items:center;gap:6px;width:92px;flex-shrink:0}
+  .limit-lab b{font-size:14px;font-weight:550;color:var(--ink2)}
+  .ptag{font-size:9px;font-weight:750;letter-spacing:.06em;padding:2.5px 5px;border-radius:5px;border:1px solid;line-height:1}
+  .ptag.final{color:var(--amber);background:rgba(207,154,68,.13);border-color:rgba(207,154,68,.4)}
+  .ptag.ended{color:var(--red);background:rgba(193,83,74,.12);border-color:rgba(193,83,74,.4)}
+  .track{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
+  .fill{display:block;height:100%;border-radius:99px;transition:width .2s}
+  .pct{font-size:13px;color:#b5afa6;width:40px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
+  .rline{font-size:12.5px;color:var(--mute);padding-left:103px;margin-bottom:2px;min-height:16px}
+  .rline.warn{color:var(--amber)} .rline.dead{color:#b3736c}
+
+  .editor{background:rgba(255,255,255,.035);border-radius:12px;padding:13px;margin:9px 0 10px}
+  .srow{display:flex;align-items:center;gap:10px}
+  input[type=range]{flex:1;accent-color:var(--purple-deep);height:5px}
+  .num{width:56px;background:var(--card2);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--ink);padding:7px 8px;font-size:15px;text-align:right}
+  .unit{font-size:13px;color:var(--mute)}
+  .chips{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+  .chip{background:var(--card2);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--ink2);padding:7px 12px;font-size:13px;cursor:pointer;font:inherit}
+  .chip.hot{background:rgba(193,83,74,.15);border-color:rgba(193,83,74,.4);color:#e0a29c}
+  .redit{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+  .rtitle{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px}
+  .clab{font-size:13px;color:var(--mute)}
+  .nsm{width:50px;background:var(--card2);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--ink);padding:7px 6px;font-size:15px;text-align:center}
+  select,.tinput{background:var(--card2);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--ink);padding:6px 9px;font-size:14px;color-scheme:dark;font:inherit}
+
+  .pwrap{margin-top:13px;padding-top:12px;border-top:1px solid var(--line)}
+  .phead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .ptitle{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+  .padd{background:none;border:none;color:var(--purple);font-size:13.5px;cursor:pointer;padding:4px;font:inherit;font-weight:550}
+  .empty{font-size:13px;color:var(--faint);padding:3px 0 5px}
+  .proj{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.045)}
+  .proj:last-child{border-bottom:none}
+  .pmain{flex:1;min-width:0;cursor:pointer}
+  .pname{font-size:14.5px;font-weight:550;color:var(--ink)}
+  .pnote{font-size:13px;color:#9d968c;margin-top:3px;white-space:pre-wrap;word-break:break-word;line-height:1.45}
+  .pact{background:none;border:none;color:var(--faint);font-size:12px;cursor:pointer;padding:4px 5px;flex-shrink:0;font:inherit}
+  .pact:active{color:var(--ink2)}
+  .closed-t{background:none;border:none;color:var(--mute);font-size:12.5px;cursor:pointer;padding:9px 0 2px;font:inherit}
+  .proj.done .pname{text-decoration:line-through;color:var(--mute)}
+  .proj.done .pnote{color:var(--faint)}
+
+  .form{background:rgba(255,255,255,.035);border-radius:12px;padding:12px;margin:7px 0}
+  .ftitle,.fnote{width:100%;background:var(--card2);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--ink);padding:9px 10px;font-size:15px;font:inherit}
+  .ftitle{margin-bottom:8px}
+  .fnote{resize:vertical;min-height:52px;font-size:14px}
+  .fbtns{display:flex;gap:10px;margin-top:9px;align-items:center}
+  .save{background:var(--purple-deep);border:none;border-radius:8px;color:#fff;padding:8px 18px;font-size:13.5px;cursor:pointer;font-weight:550;font:inherit}
+  .cancel{background:none;border:none;color:var(--mute);font-size:13px;cursor:pointer;font:inherit}
+
+  /* empty / onboarding */
+  .blank{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:34px 22px;text-align:center}
+  .blank h2{font-size:17px;font-weight:600;color:var(--ink);margin-bottom:6px}
+  .blank p{font-size:13.5px;color:var(--mute);line-height:1.6;margin-bottom:18px}
+  .blank .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+  /* sync panel */
+  .sync{max-width:560px;margin:20px auto 0;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .sync-head{display:flex;justify-content:space-between;align-items:center;padding:13px 15px;cursor:pointer}
+  .sync-head .lab{font-size:13.5px;font-weight:600;color:var(--ink2);display:flex;align-items:center;gap:8px}
+  .sync-head .st{font-size:12px;color:var(--mute)}
+  .sync-body{padding:0 15px 15px;display:none}
+  .sync-body.open{display:block}
+  .sync-body .hint{font-size:12.5px;color:var(--mute);line-height:1.55;margin:2px 0 11px}
+  .sync-body .hint a{color:var(--purple)}
+  .tokrow{display:flex;gap:8px;align-items:center;margin-bottom:11px}
+  .tokrow input{flex:1;background:var(--card2);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--ink);padding:9px 10px;font-size:14px;font:inherit}
+  .syncbtns{display:flex;gap:9px;flex-wrap:wrap}
+  .sbtn{background:var(--card2);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:var(--ink);padding:9px 14px;font-size:13.5px;cursor:pointer;font:inherit;font-weight:550}
+  .sbtn.primary{background:var(--purple-deep);border-color:var(--purple-deep);color:#fff}
+  .sbtn:disabled{opacity:.5}
+  .smsg{font-size:12.5px;color:var(--mute);margin-top:10px;min-height:16px;line-height:1.5}
+  .smsg.ok{color:var(--green)} .smsg.err{color:#e0a29c}
+
+  .foot{margin:16px auto 0;font-size:12px;color:var(--faint);text-align:center;line-height:1.7;max-width:560px}
+  .foot button{background:none;border:none;color:var(--mute);text-decoration:underline;cursor:pointer;font:inherit;font-size:12px;padding:2px 4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="head-l">
+      <div class="title">Account tracker</div>
+      <div class="summary" id="summary"></div>
+    </div>
+    <button class="addbtn" id="addBtn">+ Account</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="sync" id="sync">
+  <div class="sync-head" id="syncHead">
+    <span class="lab">☁︎ Sync &amp; backup</span>
+    <span class="st" id="syncSt"></span>
+  </div>
+  <div class="sync-body" id="syncBody">
+    <div class="hint">
+      One-tap backup of your data to your private GitHub repo, versioned by date.
+      Paste a fine-grained token scoped to <b>claude-tracker-backups</b> (Contents: read &amp; write).
+      It is stored only on this device and never leaves it except to talk to GitHub.
+    </div>
+    <div class="tokrow">
+      <input id="tokInput" type="password" placeholder="ghp_… personal access token" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="sbtn" id="tokSave">Save</button>
+    </div>
+    <div class="syncbtns">
+      <button class="sbtn primary" id="backupBtn">Backup now</button>
+      <button class="sbtn" id="restoreBtn">Restore latest</button>
+      <button class="sbtn" id="exportBtn">Export</button>
+      <button class="sbtn" id="importBtn">Import</button>
+    </div>
+    <div class="smsg" id="smsg"></div>
+  </div>
+</div>
+
+<div class="foot">
+  Tap a bar to update · resets clear themselves · ready accounts rise to the top, drag ⠿ to reorder within a group.
+</div>
+
+<script>
+(function(){
+"use strict";
+var HOUR=3600000, DAY=24*HOUR, WEEK=7*DAY, SESSION_HOURS=5;
+var LIMITS=["daily","weekly","fable"];
+var LABEL={daily:"Daily",weekly:"Weekly",fable:"Fable"};
+var WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+var MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var KEY="accounts_v4";
+var TOKEN_KEY="tracker_gh_token";
+var LASTBK_KEY="tracker_last_backup";
+var BACKUP_REPO="bjm12321/claude-tracker-backups";
+var AUTO_BACKUP_MS=20*HOUR;
+
+function uid(){return Math.random().toString(36).slice(2,9);}
+function esc(t){var d=document.createElement("div");d.textContent=t==null?"":t;return d.innerHTML;}
+
+function nextWeekday(w,hh,mm){var d=new Date();d.setHours(hh,mm,0,0);while(d.getDay()!==w||d.getTime()<=Date.now()){d.setDate(d.getDate()+1);}return d.getTime();}
+function rollWeekly(ts,now){if(!ts)return ts;var t=ts;while(t<=now)t+=WEEK;return t;}
+
+function fmtCd(target,now){
+  var diff=target-now;
+  if(diff<=0)return "now";
+  var h=Math.floor(diff/HOUR),m=Math.floor(diff%HOUR/60000);
+  if(h>=24)return "in "+Math.floor(h/24)+"d "+(h%24)+"h";
+  if(h>=1)return "in "+h+"h "+m+"m";
+  if(m>=1)return "in "+m+"m";
+  return "in <1m";
+}
+function fmtWk(ts){if(!ts)return"";var d=new Date(ts),h=d.getHours(),m=d.getMinutes(),ap=h>=12?"PM":"AM";h=h%12||12;return WD[d.getDay()]+" "+h+":"+String(m).padStart(2,"0")+" "+ap;}
+function fmtDate(ts){var d=new Date(ts);return MO[d.getMonth()]+" "+d.getDate();}
+function toDateInput(ts){var d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function fillColor(p){return p>=100?"var(--red)":p>=70?"var(--amber)":"var(--purple-deep)";}
+
+function fablePhase(a,now){
+  if(!a.fableEndsAt)return"normal";
+  if(now>=a.fableEndsAt)return"ended";
+  if(a.weeklyResetAt&&a.weeklyResetAt<a.fableEndsAt)return"refill";
+  return"final";
+}
+function isBlocked(a,now){return a.daily.pct>=100&&(!a.daily.resetAt||a.daily.resetAt>now);}
+
+// ---- storage: window.storage inside Claude, localStorage standalone ----
+var hasWS=typeof window!=="undefined"&&window.storage&&typeof window.storage.get==="function";
+function loadData(){
+  if(hasWS){
+    return window.storage.get(KEY).then(function(r){return r?JSON.parse(r.value):null;}).catch(function(){return null;});
+  }
+  return new Promise(function(res){
+    try{var v=localStorage.getItem(KEY);res(v?JSON.parse(v):null);}catch(e){res(null);}
+  });
+}
+var saveTimer=null;
+function writeNow(){
+  var s=JSON.stringify(state);
+  if(hasWS){window.storage.set(KEY,s,false).catch(function(){});}
+  else{try{localStorage.setItem(KEY,s);}catch(e){}}
+}
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(function(){saveTimer=null;writeNow();},350);
+}
+function flushSave(){
+  if(saveTimer){clearTimeout(saveTimer);saveTimer=null;writeNow();}
+}
+// Don't lose a pending debounced write when the tab is backgrounded/closed (iOS).
+window.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden")flushSave();});
+window.addEventListener("pagehide",flushSave);
+function lget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+
+// ---- state -------------------------------------------------------------
+function newAccount(name){
+  return {id:uid(),name:name,daily:{pct:0,resetAt:null},weekly:{pct:0},fable:{pct:0},
+          weeklyResetAt:nextWeekday(6,8,0),fableEndsAt:null,projects:[]};
+}
+function defaults(){return {accounts:[],order:[]};}
+var state=null;
+var ui={open:null,draft:null,closedShown:{}};
+var grid=document.getElementById("grid");
+
+function acct(id){for(var i=0;i<state.accounts.length;i++)if(state.accounts[i].id===id)return state.accounts[i];return null;}
+
+// ---- auto-clear --------------------------------------------------------
+function autoClear(now){
+  var changed=false;
+  state.accounts.forEach(function(a){
+    if(a.daily.resetAt&&a.daily.resetAt<=now){a.daily={pct:0,resetAt:null};changed=true;}
+    if(a.weeklyResetAt&&a.weeklyResetAt<=now){
+      var refill=!a.fableEndsAt||a.weeklyResetAt<a.fableEndsAt;
+      a.weekly={pct:0};
+      if(refill)a.fable={pct:0};
+      a.weeklyResetAt=rollWeekly(a.weeklyResetAt,now);
+      changed=true;
+    }
+  });
+  return changed;
+}
+
+// ---- render ------------------------------------------------------------
+function limitHtml(a,limit,now){
+  var pct=a[limit].pct, isOpen=ui.open===a.id+":"+limit;
+  var rtext="",rcls="",tag="",cd="";
+  if(limit==="daily"){
+    if(a.daily.resetAt){rtext="Resets "+fmtCd(a.daily.resetAt,now);cd=' data-cd="'+a.daily.resetAt+'" data-cd-pre="Resets "';}
+    else rtext="Available";
+  }else if(limit==="weekly"){
+    rtext=a.weeklyResetAt?"Resets "+fmtWk(a.weeklyResetAt):"No reset set";
+  }else{
+    var ph=fablePhase(a,now);
+    if(ph==="refill")rtext="Resets "+fmtWk(a.weeklyResetAt)+" · 1 refill left, then done";
+    else if(ph==="final"){rtext="No more resets · gone "+fmtDate(a.fableEndsAt);rcls="warn";tag='<span class="ptag final">FINAL</span>';}
+    else if(ph==="ended"){rtext="Ended "+fmtDate(a.fableEndsAt)+" · paid only";rcls="dead";tag='<span class="ptag ended">ENDED</span>';}
+    else rtext=a.weeklyResetAt?"Resets "+fmtWk(a.weeklyResetAt):"No reset set";
+  }
+  var h='<button class="limit-row" data-act="toggle" data-limit="'+limit+'">'
+    +'<span class="limit-lab"><b>'+LABEL[limit]+'</b>'+tag+'</span>'
+    +'<span class="track"><span class="fill" data-fill="'+limit+'" style="width:'+pct+'%;background:'+fillColor(pct)+'"></span></span>'
+    +'<span class="pct" data-pct="'+limit+'">'+pct+'%</span></button>'
+    +'<div class="rline '+rcls+'"'+cd+'>'+rtext+'</div>';
+  if(isOpen){
+    h+='<div class="editor">'
+      +'<div class="srow"><input type="range" min="0" max="100" value="'+pct+'" data-slide="'+limit+'">'
+      +'<input class="num" type="number" min="0" max="100" value="'+pct+'" data-numin="'+limit+'"><span class="unit">%</span></div>'
+      +'<div class="chips"><button class="chip" data-act="pct0" data-limit="'+limit+'">0%</button>'
+      +'<button class="chip" data-act="pct100" data-limit="'+limit+'">100%</button></div>';
+    if(limit==="daily"){
+      h+='<div class="redit"><div class="rtitle">Session reset</div>'
+        +'<div class="chips"><button class="chip hot" data-act="hit">Hit limit · back in 5h</button>'
+        +'<button class="chip" data-act="cleardaily">Clear</button></div>'
+        +'<div class="chips"><span class="clab">or resets in</span>'
+        +'<input class="nsm" type="number" min="0" placeholder="h" data-ch="1">'
+        +'<input class="nsm" type="number" min="0" max="59" placeholder="m" data-cm="1">'
+        +'<button class="chip" data-act="setdaily">Set</button></div></div>';
+    }else if(limit==="weekly"){
+      var d=a.weeklyResetAt?new Date(a.weeklyResetAt):null;
+      var day=d?d.getDay():6;
+      var tval=d?String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"):"08:00";
+      h+='<div class="redit"><div class="rtitle">Weekly reset · refills Fable too (until its end date)</div><div class="chips">'
+        +'<select data-wday="1">'+WD.map(function(n,i){return '<option value="'+i+'"'+(i===day?" selected":"")+'>'+n+'</option>';}).join("")+'</select>'
+        +'<input class="tinput" type="time" value="'+tval+'" data-wtime="1"></div></div>';
+    }else{
+      h+='<div class="redit"><div class="rtitle">Fable end date · resets with Weekly until then</div><div class="chips">'
+        +'<input class="tinput" type="date" value="'+(a.fableEndsAt?toDateInput(a.fableEndsAt):"")+'" data-fdate="1"></div></div>';
+    }
+    h+='</div>';
+  }
+  return h;
+}
+
+function projFormHtml(d){
+  return '<div class="form">'
+    +'<input class="ftitle" placeholder="Project name" value="'+esc(d.title)+'" data-dtitle="1">'
+    +'<textarea class="fnote" placeholder="Note to self…" data-dnote="1">'+esc(d.note)+'</textarea>'
+    +'<div class="fbtns"><button class="save" data-act="dsave">Save</button><button class="cancel" data-act="dcancel">Cancel</button></div></div>';
+}
+
+function cardHtml(a,now){
+  var blocked=isBlocked(a,now);
+  var status;
+  if(!blocked)status='<span class="status ready">Ready</span>';
+  else if(a.daily.resetAt)status='<span class="status wait" data-cd-status="'+a.daily.resetAt+'">Ready '+fmtCd(a.daily.resetAt,now)+'</span>';
+  else status='<span class="status wait">Maxed · set reset</span>';
+
+  var h='<div class="card'+(blocked?" blocked":"")+'" data-id="'+a.id+'" data-group="'+(blocked?"b":"r")+'">'
+    +'<div class="card-head"><span class="handle">⠿</span>'
+    +'<button class="acct-name" data-act="rename">'+esc(a.name)+'</button>'+status
+    +'<button class="del" data-act="delacct" title="Delete account">✕</button></div>';
+  LIMITS.forEach(function(l){h+=limitHtml(a,l,now);});
+
+  var active=a.projects.filter(function(p){return !p.archived;});
+  var closed=a.projects.filter(function(p){return p.archived;});
+  h+='<div class="pwrap"><div class="phead"><span class="ptitle">Projects</span><button class="padd" data-act="padd">+ Add</button></div>';
+  var addingHere=ui.draft&&ui.draft.accId===a.id&&!ui.draft.projId;
+  if(!active.length&&!addingHere)h+='<div class="empty">No projects yet.</div>';
+  active.forEach(function(p){
+    if(ui.draft&&ui.draft.projId===p.id){h+=projFormHtml(ui.draft);return;}
+    h+='<div class="proj"><div class="pmain" data-act="pedit" data-pid="'+p.id+'"><div class="pname">'+esc(p.title)+'</div>'
+      +(p.note?'<div class="pnote">'+esc(p.note)+'</div>':"")+'</div>'
+      +'<button class="pact" data-act="parch" data-pid="'+p.id+'">Close</button></div>';
+  });
+  if(addingHere)h+=projFormHtml(ui.draft);
+  if(closed.length){
+    h+='<button class="closed-t" data-act="ctoggle">'+(ui.closedShown[a.id]?"▾":"▸")+' Closed ('+closed.length+')</button>';
+    if(ui.closedShown[a.id]){
+      closed.forEach(function(p){
+        h+='<div class="proj done"><div class="pmain"><div class="pname">'+esc(p.title)+'</div>'
+          +(p.note?'<div class="pnote">'+esc(p.note)+'</div>':"")+'</div>'
+          +'<button class="pact" data-act="preopen" data-pid="'+p.id+'">Reopen</button>'
+          +'<button class="pact" data-act="pdel" data-pid="'+p.id+'">Delete</button></div>';
+      });
+    }
+  }
+  h+='</div></div>';
+  return h;
+}
+
+function render(){
+  var now=Date.now();
+  if(!state.accounts.length){
+    grid.innerHTML='<div class="blank"><h2>No accounts yet</h2>'
+      +'<p>Add one to start tracking, or import data you exported before.</p>'
+      +'<div class="row"><button class="addbtn" data-act="addfirst">+ Add account</button>'
+      +'<button class="addbtn ghost" data-act="importblank">Import your data</button></div></div>';
+    document.getElementById("summary").textContent="";
+    return;
+  }
+  // valid order list
+  var ids=state.accounts.map(function(a){return a.id;});
+  state.order=state.order.filter(function(id){return ids.indexOf(id)>=0;});
+  ids.forEach(function(id){if(state.order.indexOf(id)<0)state.order.push(id);});
+  var ordered=state.order.map(acct);
+  var ready=ordered.filter(function(a){return !isBlocked(a,now);});
+  var blocked=ordered.filter(function(a){return isBlocked(a,now);});
+  grid.innerHTML=ready.concat(blocked).map(function(a){return cardHtml(a,now);}).join("");
+  document.getElementById("summary").textContent=ready.length+" of "+state.accounts.length+" ready";
+}
+
+// ---- per-second tick ---------------------------------------------------
+setInterval(function(){
+  if(!state)return;
+  var now=Date.now();
+  if(autoClear(now)){save();render();return;}
+  var els=grid.querySelectorAll("[data-cd]");
+  for(var i=0;i<els.length;i++){
+    var t=+els[i].getAttribute("data-cd");
+    els[i].textContent=(els[i].getAttribute("data-cd-pre")||"")+fmtCd(t,now);
+  }
+  var sts=grid.querySelectorAll("[data-cd-status]");
+  for(var j=0;j<sts.length;j++){
+    sts[j].textContent="Ready "+fmtCd(+sts[j].getAttribute("data-cd-status"),now);
+  }
+},1000);
+
+// ---- account CRUD ------------------------------------------------------
+function addAccount(){
+  var name=window.prompt("Account name:");
+  if(name==null)return;
+  name=name.trim();
+  if(!name)return;
+  var a=newAccount(name);
+  state.accounts.push(a);
+  state.order.push(a.id);
+  save();render();
+}
+function renameAccount(a){
+  var name=window.prompt("Rename account:",a.name);
+  if(name==null)return;
+  name=name.trim();
+  if(!name)return;
+  a.name=name;save();render();
+}
+function deleteAccount(a){
+  if(!window.confirm("Delete “"+a.name+"” and its projects? This can't be undone."))return;
+  state.accounts=state.accounts.filter(function(x){return x.id!==a.id;});
+  state.order=state.order.filter(function(id){return id!==a.id;});
+  if(ui.draft&&ui.draft.accId===a.id)ui.draft=null;
+  save();render();
+}
+document.getElementById("addBtn").addEventListener("click",addAccount);
+
+// ---- events ------------------------------------------------------------
+function cardOf(el){var c=el.closest(".card");return c?acct(c.dataset.id):null;}
+
+grid.addEventListener("click",function(e){
+  var btn=e.target.closest("[data-act]");
+  if(!btn)return;
+  var act=btn.dataset.act;
+  if(act==="addfirst"){addAccount();return;}
+  if(act==="importblank"){doImport();return;}
+  var a=cardOf(btn); if(!a)return;
+  var limit=btn.dataset.limit, pid=btn.dataset.pid;
+  if(act==="rename"){renameAccount(a);}
+  else if(act==="delacct"){deleteAccount(a);}
+  else if(act==="toggle"){var k=a.id+":"+limit;ui.open=ui.open===k?null:k;render();}
+  else if(act==="pct0"||act==="pct100"){a[limit].pct=act==="pct0"?0:100;save();render();}
+  else if(act==="hit"){a.daily={pct:100,resetAt:Date.now()+SESSION_HOURS*HOUR};save();render();}
+  else if(act==="cleardaily"){a.daily={pct:0,resetAt:null};save();render();}
+  else if(act==="setdaily"){
+    var card=btn.closest(".card");
+    var h=parseInt(card.querySelector("[data-ch]").value||"0",10);
+    var m=parseInt(card.querySelector("[data-cm]").value||"0",10);
+    if(h||m){a.daily={pct:a.daily.pct||100,resetAt:Date.now()+h*HOUR+m*60000};save();render();}
+  }
+  else if(act==="padd"){ui.draft={accId:a.id,projId:null,title:"",note:""};render();focusDraft();}
+  else if(act==="pedit"){var p=a.projects.find(function(x){return x.id===pid;});ui.draft={accId:a.id,projId:pid,title:p.title,note:p.note||""};render();focusDraft();}
+  else if(act==="parch"||act==="preopen"){a.projects.forEach(function(p){if(p.id===pid)p.archived=act==="parch";});save();render();}
+  else if(act==="pdel"){a.projects=a.projects.filter(function(p){return p.id!==pid;});save();render();}
+  else if(act==="ctoggle"){ui.closedShown[a.id]=!ui.closedShown[a.id];render();}
+  else if(act==="dsave"){
+    var f=btn.closest(".form");
+    var title=f.querySelector("[data-dtitle]").value.trim();
+    var note=f.querySelector("[data-dnote]").value;
+    if(!title)return;
+    if(ui.draft.projId){a.projects.forEach(function(p){if(p.id===ui.draft.projId){p.title=title;p.note=note;}});}
+    else a.projects.push({id:uid(),title:title,note:note,archived:false});
+    ui.draft=null;save();render();
+  }
+  else if(act==="dcancel"){ui.draft=null;render();}
+});
+
+function focusDraft(){var el=grid.querySelector("[data-dtitle]");if(el)el.focus();}
+
+grid.addEventListener("input",function(e){
+  var a=cardOf(e.target); if(!a)return;
+  var card=e.target.closest(".card");
+  var limit=e.target.getAttribute("data-slide")||e.target.getAttribute("data-numin");
+  if(limit){
+    var v=Math.max(0,Math.min(100,Math.round(+e.target.value||0)));
+    a[limit].pct=v;
+    var f=card.querySelector('[data-fill="'+limit+'"]');
+    if(f){f.style.width=v+"%";f.style.background=fillColor(v);}
+    var pc=card.querySelector('[data-pct="'+limit+'"]');if(pc)pc.textContent=v+"%";
+    var other=e.target.hasAttribute("data-slide")?card.querySelector('[data-numin="'+limit+'"]'):card.querySelector('[data-slide="'+limit+'"]');
+    if(other)other.value=v;
+    save();
+  }
+  if(e.target.hasAttribute("data-dtitle"))ui.draft.title=e.target.value;
+  if(e.target.hasAttribute("data-dnote"))ui.draft.note=e.target.value;
+});
+
+grid.addEventListener("change",function(e){
+  var a=cardOf(e.target); if(!a)return;
+  var card=e.target.closest(".card");
+  if(e.target.hasAttribute("data-wday")||e.target.hasAttribute("data-wtime")){
+    var day=+card.querySelector("[data-wday]").value;
+    var t=card.querySelector("[data-wtime]").value||"08:00";
+    var parts=t.split(":");
+    a.weeklyResetAt=nextWeekday(day,parseInt(parts[0],10),parseInt(parts[1],10));
+    save();render();
+  }
+  if(e.target.hasAttribute("data-fdate")){
+    var v=e.target.value;
+    if(!v)a.fableEndsAt=null;
+    else{var p=v.split("-");a.fableEndsAt=new Date(+p[0],+p[1]-1,+p[2],0,0,0,0).getTime();}
+    save();render();
+  }
+  // slider drag end -> re-render so status/order reflects (e.g. daily hits 100)
+  if(e.target.hasAttribute("data-slide")||e.target.hasAttribute("data-numin"))render();
+});
+
+// ---- drag to reorder (within same ready/blocked group) ------------------
+grid.addEventListener("pointerdown",function(e){
+  var handle=e.target.closest(".handle");
+  if(!handle)return;
+  e.preventDefault();
+  var card=handle.closest(".card");
+  var group=card.dataset.group;
+  card.classList.add("dragging");
+  try{handle.setPointerCapture(e.pointerId);}catch(err){}
+  function onMove(ev){
+    var siblings=[].slice.call(grid.querySelectorAll('.card[data-group="'+group+'"]')).filter(function(c){return c!==card;});
+    var cr=card.getBoundingClientRect();
+    for(var i=0;i<siblings.length;i++){
+      var r=siblings[i].getBoundingClientRect();
+      var mid=r.top+r.height/2;
+      if(ev.clientY<mid&&cr.top>r.top){grid.insertBefore(card,siblings[i]);break;}
+      if(ev.clientY>mid&&cr.top<r.top){grid.insertBefore(card,siblings[i].nextSibling);break;}
+    }
+  }
+  function onUp(){
+    card.classList.remove("dragging");
+    handle.removeEventListener("pointermove",onMove);
+    handle.removeEventListener("pointerup",onUp);
+    handle.removeEventListener("pointercancel",onUp);
+    state.order=[].slice.call(grid.querySelectorAll(".card")).map(function(c){return c.dataset.id;});
+    save();
+  }
+  handle.addEventListener("pointermove",onMove);
+  handle.addEventListener("pointerup",onUp);
+  handle.addEventListener("pointercancel",onUp);
+});
+
+// ---- export / import ----------------------------------------------------
+function doExport(){
+  var s=JSON.stringify(state);
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(s).then(function(){smsg("Data copied to clipboard.","ok");},function(){window.prompt("Copy this data:",s);});
+  }else{window.prompt("Copy this data:",s);}
+}
+function doImport(){
+  var s=window.prompt("Paste exported data:");
+  if(!s)return;
+  try{
+    var d=JSON.parse(s);
+    if(d&&d.accounts&&d.order){state=d;save();render();smsg("Imported "+d.accounts.length+" account(s).","ok");}
+    else{alert("That doesn't look like tracker data.");}
+  }catch(e){alert("Couldn't read that data — make sure the full export was pasted.");}
+}
+document.getElementById("exportBtn").addEventListener("click",doExport);
+document.getElementById("importBtn").addEventListener("click",doImport);
+
+// ---- GitHub sync -------------------------------------------------------
+function token(){return lget(TOKEN_KEY)||"";}
+function smsg(t,cls){var el=document.getElementById("smsg");el.textContent=t||"";el.className="smsg"+(cls?" "+cls:"");}
+function b64encode(str){return btoa(unescape(encodeURIComponent(str)));}
+function b64decode(str){return decodeURIComponent(escape(atob(str.replace(/\s/g,""))));}
+function ghHeaders(){return {"Authorization":"Bearer "+token(),"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"};}
+function todayStr(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+
+function ghGet(path){
+  return fetch("https://api.github.com/repos/"+BACKUP_REPO+"/contents/"+path,{headers:ghHeaders()});
+}
+function backupNow(silent){
+  if(!token()){if(!silent)smsg("Add a token first.","err");return Promise.resolve(false);}
+  var path="backups/"+todayStr()+".json";
+  var body=JSON.stringify(state,null,2);
+  if(!silent)smsg("Backing up…");
+  return ghGet(path).then(function(r){
+    return r.status===200?r.json().then(function(j){return j.sha;}):null;
+  }).then(function(sha){
+    var payload={message:"Backup "+todayStr(),content:b64encode(body)};
+    if(sha)payload.sha=sha;
+    return fetch("https://api.github.com/repos/"+BACKUP_REPO+"/contents/"+path,{
+      method:"PUT",headers:ghHeaders(),body:JSON.stringify(payload)
+    });
+  }).then(function(r){
+    if(r.ok){lset(LASTBK_KEY,String(Date.now()));updateSyncStatus();if(!silent)smsg("Backed up to "+path+" ✓","ok");return true;}
+    return r.json().then(function(j){throw new Error(j.message||("HTTP "+r.status));});
+  }).catch(function(e){
+    if(!silent)smsg("Backup failed: "+e.message,"err");return false;
+  });
+}
+function restoreLatest(){
+  if(!token()){smsg("Add a token first.","err");return;}
+  smsg("Fetching backups…");
+  ghGet("backups").then(function(r){
+    if(r.status===404)throw new Error("No backups folder yet.");
+    if(!r.ok)return r.json().then(function(j){throw new Error(j.message||("HTTP "+r.status));});
+    return r.json();
+  }).then(function(list){
+    var files=(list||[]).filter(function(f){return f.type==="file"&&/\.json$/i.test(f.name);});
+    if(!files.length)throw new Error("No backup files found.");
+    files.sort(function(a,b){return a.name<b.name?1:-1;});
+    var latest=files[0];
+    return fetch(latest.download_url).then(function(r){return r.text();}).then(function(txt){
+      var d=JSON.parse(txt);
+      if(!d||!d.accounts||!d.order)throw new Error("Backup file is not valid tracker data.");
+      if(!window.confirm("Restore "+latest.name+" ("+d.accounts.length+" accounts)? This replaces what's on this device."))return;
+      state=d;save();render();smsg("Restored "+latest.name+" ✓","ok");
+    });
+  }).catch(function(e){smsg("Restore failed: "+e.message,"err");});
+}
+function updateSyncStatus(){
+  var st=document.getElementById("syncSt");
+  if(!token()){st.textContent="not set up";return;}
+  var last=+lget(LASTBK_KEY)||0;
+  if(!last){st.textContent="token saved";return;}
+  var days=Math.floor((Date.now()-last)/DAY);
+  st.textContent=days<=0?"backed up today":days===1?"backed up yesterday":"backed up "+days+"d ago";
+}
+function maybeAutoBackup(){
+  if(!token()||!state||!state.accounts.length)return;
+  var last=+lget(LASTBK_KEY)||0;
+  if(Date.now()-last>=AUTO_BACKUP_MS)backupNow(true);
+}
+
+document.getElementById("syncHead").addEventListener("click",function(){
+  document.getElementById("syncBody").classList.toggle("open");
+});
+document.getElementById("tokSave").addEventListener("click",function(){
+  var v=document.getElementById("tokInput").value.trim();
+  if(v){lset(TOKEN_KEY,v);document.getElementById("tokInput").value="";smsg("Token saved on this device.","ok");}
+  else{try{localStorage.removeItem(TOKEN_KEY);}catch(e){}smsg("Token cleared.","ok");}
+  updateSyncStatus();
+});
+document.getElementById("backupBtn").addEventListener("click",function(){backupNow(false);});
+document.getElementById("restoreBtn").addEventListener("click",restoreLatest);
+
+// ---- boot ---------------------------------------------------------------
+loadData().then(function(d){
+  state=(d&&d.accounts&&d.order)?d:defaults();
+  autoClear(Date.now());
+  render();
+  updateSyncStatus();
+  maybeAutoBackup();
+});
+
+// ---- service worker (standalone hosting only) --------------------------
+if("serviceWorker" in navigator&&location.protocol==="https:"){
+  window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});
+}
+})();
+</script>
+</body>
+</html>
