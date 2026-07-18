@@ -1,7 +1,7 @@
 /* Account Tracker service worker.
    index.html is network-first so a push to GitHub Pages shows up on next load;
    icons/manifest are cache-first. Offline falls back to the cached shell. */
-var CACHE = "tracker-v7";
+var CACHE = "tracker-v8";
 var ASSETS = ["./", "index.html", "manifest.webmanifest", "icon192.png", "icon512.png", "appletouchicon.png"];
 
 self.addEventListener("install", function(e){
@@ -29,7 +29,9 @@ self.addEventListener("fetch", function(e){
   // never touch GitHub API calls
   if(url.hostname.indexOf("github") !== -1) return;
 
-  var isDoc = req.mode === "navigate" || /\/(index\.html)?$/.test(url.pathname);
+  // Only the app shell (root or index.html) is the network-first "document";
+  // other pages like log.html / bookmarklets.html must not overwrite it.
+  var isDoc = req.mode === "navigate" && /\/(index\.html)?$/.test(url.pathname);
   if(isDoc){
     // network-first for the app shell
     e.respondWith(

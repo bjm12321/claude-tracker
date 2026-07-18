@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#262421">
+<title>Logging usage…</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#262421;color:#f0ede8;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px}
+  .box{max-width:420px;width:100%;text-align:center}
+  .big{font-size:44px;margin-bottom:12px;line-height:1}
+  h1{font-size:20px;font-weight:650;margin-bottom:8px}
+  .nums{color:#a78bfa;font-size:15px;font-weight:600;margin:10px 0}
+  p{color:#8a847b;font-size:14px;line-height:1.6;margin:6px 0}
+  p.err{color:#e0a29c}
+  input{width:100%;background:#26231f;border:1px solid rgba(255,255,255,.15);border-radius:9px;
+    color:#f0ede8;padding:11px 12px;font-size:15px;margin:14px 0 10px;font:inherit}
+  button{background:#8b6fd8;border:none;border-radius:9px;color:#fff;padding:11px 20px;
+    font-size:15px;font-weight:600;cursor:pointer;font:inherit}
+  #tokWrap{display:none}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="big" id="icon">⏳</div>
+  <h1 id="title">Saving…</h1>
+  <div class="nums" id="nums"></div>
+  <p id="msg"></p>
+  <div id="tokWrap">
+    <input id="tok" type="password" placeholder="Paste your GitHub token" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button id="tokBtn">Save & continue</button>
+  </div>
+</div>
+<script>
+(function(){
+"use strict";
+var TOKEN_KEY="tracker_gh_token";
+var REPO="bjm12321/claude-tracker-backups";
+function $(id){return document.getElementById(id);}
+function lget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function b64(s){return btoa(unescape(encodeURIComponent(s)));}
+function headers(t){return {"Authorization":"Bearer "+t,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"};}
+function slug(n){return String(n).trim().toLowerCase().replace(/\s+/g,"-");}
+function show(icon,title,msg,isErr){
+  $("icon").textContent=icon;$("title").textContent=title;
+  $("msg").textContent=msg||"";$("msg").className=isErr?"err":"";
+}
+
+// ---- read the numbers passed in the URL (#name=…&daily=…) ----
+var p={};
+location.hash.replace(/^#/,"").split("&").forEach(function(kv){
+  if(!kv)return;var i=kv.indexOf("=");if(i<0)return;
+  p[decodeURIComponent(kv.slice(0,i))]=decodeURIComponent(kv.slice(i+1));
+});
+function num(v){var n=parseInt(v,10);return isNaN(n)?null:Math.max(0,Math.min(100,n));}
+var name=(p.name||"").trim();
+if(!name){show("⚠️","Missing account","This link didn't include an account name.",true);return;}
+
+var status={name:name,updatedAt:Date.now()};
+var d=num(p.daily),w=num(p.weekly),f=num(p.fable);
+if(d!=null)status.daily=d;
+if(w!=null)status.weekly=w;
+if(f!=null)status.fable=f;
+var rm=parseInt(p.resetMin,10);
+if(!isNaN(rm)&&rm>0)status.dailyResetAt=Date.now()+rm*60000;
+
+var parts=[];
+if(d!=null)parts.push("daily "+d+"%");
+if(w!=null)parts.push("weekly "+w+"%");
+if(f!=null)parts.push("fable "+f+"%");
+$("nums").textContent=name+" — "+(parts.join(" · ")||"no numbers read");
+
+function write(t){
+  show("⏳","Saving "+name+"…","");
+  var path="status/"+slug(name)+".json";
+  var body=JSON.stringify(status,null,2);
+  fetch("https://api.github.com/repos/"+REPO+"/contents/"+path,{headers:headers(t)})
+    .then(function(r){return r.status===200?r.json().then(function(j){return j.sha;}):null;})
+    .then(function(sha){
+      var payload={message:"Log "+name+" usage",content:b64(body)};
+      if(sha)payload.sha=sha;
+      return fetch("https://api.github.com/repos/"+REPO+"/contents/"+path,{method:"PUT",headers:headers(t),body:JSON.stringify(payload)});
+    })
+    .then(function(r){
+      if(r.ok){show("✅","Saved "+name,"Your tracker updates within ~5 min. This tab closes itself.");setTimeout(function(){try{window.close();}catch(e){}},2500);}
+      else return r.json().then(function(j){throw new Error(j.message||("HTTP "+r.status));});
+    })
+    .catch(function(e){show("⚠️","Couldn't save",e.message+" — your token may be wrong or expired.",true);askToken();});
+}
+function askToken(){
+  $("tokWrap").style.display="block";
+  $("tokBtn").onclick=function(){
+    var v=$("tok").value.trim();if(!v)return;
+    lset(TOKEN_KEY,v);$("tokWrap").style.display="none";write(v);
+  };
+}
+var tok=lget(TOKEN_KEY);
+if(tok)write(tok);
+else{show("🔑","One-time setup","Paste your GitHub token to turn on 1-click logging for this browser.");askToken();}
+})();
+</script>
+</body>
+</html>
