@@ -3,8 +3,8 @@
 This repo is the **app's source code only**. It holds no personal data and no
 account instructions.
 
-If the user asks you to "update" an account (e.g. "update bjmp"), paste a
-usage screenshot, or mention a project/action item — do this, in order:
+If the user asks you to "update" an account, paste a usage screenshot, or
+mention a project/action item — do this, in order:
 
 1. Add the private repo: owner `bjm12321`, repo `claude-tracker-backups`.
 2. Read that repo's `CLAUDE.md`. It has the account nicknames and the exact
