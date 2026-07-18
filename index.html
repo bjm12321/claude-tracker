@@ -940,7 +940,17 @@ function healthInfo(){
     var days=Math.floor((Date.now()-last)/DAY);
     if(days>=2)return {cls:"",text:"☁︎ Last backup was "+days+" days ago.",btn:"Back up",act:"backup"};
   }
+  // token saved but no expiry date: the renewal reminder can't work yet
+  if(!exp)return {cls:"",text:"🔑 One last setup step: when does your GitHub key expire?",btn:"Set date",act:"setexp"};
   return null;
+}
+function setExpFormHtml(){
+  return '<div id="expForm" class="guide">'
+    +'<div class="rtitle">GitHub showed this date when you made the key (30 days is its usual choice)</div>'
+    +'<div class="tokrow"><span class="clab" style="flex-shrink:0">It expires</span>'
+    +'<input id="nExp" type="date" class="tinput" style="flex:1" value="'+toDateInput(Date.now()+30*DAY)+'"></div>'
+    +'<button class="sbtn primary" data-hact="nsave">Save</button>'
+    +'</div>';
 }
 function renewGuideHtml(open){
   return '<div id="guide" class="guide'+(open?"":" hide")+'">'
@@ -962,6 +972,7 @@ function updateHealth(){
   if(!healthEl)return;
   var g=document.getElementById("guide");
   if(g&&!g.classList.contains("hide"))return; // don't wipe the form mid-typing
+  if(document.getElementById("expForm"))return;
   var h=healthInfo();
   if(!h){healthEl.innerHTML="";return;}
   healthEl.innerHTML='<div class="banner '+h.cls+'"><span class="btxt">'+h.text+'</span>'
@@ -975,6 +986,16 @@ healthEl.addEventListener("click",function(e){
   if(act==="renew"){
     var g=document.getElementById("guide");
     if(g)g.classList.toggle("hide");
+  }else if(act==="setexp"){
+    if(!document.getElementById("expForm"))healthEl.insertAdjacentHTML("beforeend",setExpFormHtml());
+    else document.getElementById("expForm").remove();
+  }else if(act==="nsave"){
+    var nv=document.getElementById("nExp").value;
+    if(!nv)return;
+    lset(TOKEN_EXP_KEY,String(new Date(nv+"T00:00:00").getTime()));
+    prefillExpiry();
+    healthEl.innerHTML='<div class="banner ok"><span class="btxt">✓ Saved — I’ll remind you a week before it dies.</span></div>';
+    setTimeout(updateHealth,4000);
   }else if(act==="backup"){
     document.getElementById("sync").classList.add("show");
     backupNow(false).then(function(){updateSyncStatus();updateHealth();});
