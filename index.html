@@ -395,6 +395,7 @@ function limitHtml(a,limit,now){
   var rtext="",rcls="",tag="",cd="";
   if(limit==="daily"){
     if(a.daily.resetAt){rtext="Resets "+fmtCd(a.daily.resetAt,now);cd=' data-cd="'+a.daily.resetAt+'" data-cd-pre="Resets "';}
+    else if(pct>=100){rtext="Maxed — tap to set when it’s back";rcls="warn";}
     else rtext="Available";
   }else if(limit==="weekly"){
     rtext=a.weeklyResetAt?"Resets "+fmtWk(a.weeklyResetAt):"No reset set";
@@ -1038,7 +1039,12 @@ function applyStatus(a,s){
   if(!s||typeof s.updatedAt!=="number")return false;
   if(a.lastStatusAt&&s.updatedAt<=a.lastStatusAt)return false;
   if(typeof s.daily==="number")a.daily.pct=clampPct(s.daily);
-  if(typeof s.dailyResetAt==="number")a.daily.resetAt=s.dailyResetAt>Date.now()?s.dailyResetAt:null;
+  if(typeof s.dailyResetAt==="number"){
+    // an already-finished rest means the daily limit has reset since the
+    // snapshot was taken — clear it, don't leave a stuck 100% bar
+    if(s.dailyResetAt>Date.now())a.daily.resetAt=s.dailyResetAt;
+    else a.daily={pct:0,resetAt:null};
+  }
   else if(s.dailyResetAt===null)a.daily.resetAt=null;
   if(typeof s.weekly==="number")a.weekly.pct=clampPct(s.weekly);
   if(typeof s.fable==="number")a.fable.pct=clampPct(s.fable);
