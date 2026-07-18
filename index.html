@@ -30,8 +30,8 @@
   .wrap{max-width:560px;margin:0 auto}
   .head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;padding:0 4px}
   .head-l{min-width:0}
-  .title{font-size:20px;font-weight:650;letter-spacing:-0.01em}
-  .summary{font-size:13px;color:var(--purple)}
+  .title{font-size:11px;font-weight:750;letter-spacing:.11em;color:var(--mute);text-transform:uppercase;white-space:nowrap}
+  .summary{font-size:20px;font-weight:650;color:var(--ink);letter-spacing:-.01em;margin-top:2px}
   .addbtn{background:var(--purple-deep);border:none;border-radius:9px;color:#fff;padding:9px 15px;font-size:14px;font-weight:600;cursor:pointer;font:inherit;flex-shrink:0;white-space:nowrap}
   .addbtn.ghost{background:var(--card);border:1px solid rgba(255,255,255,.12);color:var(--ink2)}
   .grid{display:flex;flex-direction:column;gap:12px;position:relative}
@@ -117,9 +117,53 @@
   .ptr span{background:var(--card);border:1px solid rgba(167,139,250,.4);border-radius:99px;color:var(--purple);
     font-size:13px;font-weight:550;padding:9px 16px;box-shadow:0 6px 20px rgba(0,0,0,.4)}
 
-  /* header warning line */
-  .warnline{font-size:12px;color:var(--amber)}
-  .warnline:empty{display:none}
+  /* health banner (one issue at a time) + renewal guide */
+  .banner{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:13px 15px;border-radius:14px;
+    background:rgba(207,154,68,.1);border:1px solid rgba(207,154,68,.35)}
+  .banner .btxt{flex:1;font-size:14px;color:#e8c384;line-height:1.45}
+  .banner.bad{background:rgba(193,83,74,.12);border-color:rgba(193,83,74,.4)}
+  .banner.bad .btxt{color:#e0a29c}
+  .banner.ok{background:rgba(127,174,111,.1);border-color:rgba(127,174,111,.35)}
+  .banner.ok .btxt{color:#a8cf9b}
+  .bbtn{background:var(--purple-deep);border:none;border-radius:9px;color:#fff;padding:10px 15px;
+    font-size:13.5px;font-weight:600;cursor:pointer;font:inherit;flex-shrink:0;white-space:nowrap}
+  .guide{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  .guide.hide{display:none}
+  .guide ol{margin:8px 0 4px 20px;font-size:14px;color:var(--ink2);line-height:1.55}
+  .guide li{margin:7px 0}
+  .guide a{color:var(--purple);font-weight:600}
+  .guide code{background:var(--card2);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:1px 6px;font-size:12.5px}
+  .guide .tokrow{margin-top:12px;margin-bottom:9px}
+
+  /* hero: the Continue card */
+  .hero{background:linear-gradient(160deg,rgba(139,111,216,.16),rgba(139,111,216,.05) 55%),var(--card);
+    border:1px solid rgba(167,139,250,.4);border-radius:18px;padding:18px 18px 16px;margin-bottom:14px;
+    cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .hero:active{opacity:.85}
+  .eyebrow{font-size:11px;font-weight:750;letter-spacing:.12em;color:var(--purple);margin-bottom:7px}
+  .htitle{font-size:26px;font-weight:650;letter-spacing:-.01em;line-height:1.15;overflow-wrap:break-word}
+  .hnote{font-size:13.5px;color:var(--mute);margin-top:5px;line-height:1.5;display:-webkit-box;
+    -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .hgo{font-size:15.5px;color:var(--ink2);margin-top:12px;line-height:1.5;font-variant-numeric:tabular-nums}
+  .hgo b{color:#c9b6f7;font-weight:650}
+  .hsub{font-size:12.5px;color:var(--faint);margin-top:5px}
+
+  /* collapsed account rows */
+  .card.rowc{padding:13px 15px;cursor:pointer;border-radius:14px}
+  .card.rowc:active{opacity:.85}
+  .card.rowc.blocked{opacity:.58}
+  .rhead{display:flex;align-items:center;gap:9px}
+  .chev{color:var(--faint);font-size:12px;flex-shrink:0;width:12px}
+  .rname{font-size:17px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mbs{display:flex;align-items:center;gap:5px;flex-shrink:0}
+  .mbl{font-size:9.5px;font-weight:700;color:var(--faint)}
+  .mb{display:inline-block;width:34px;height:4px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+  .mb i{display:block;height:100%;border-radius:99px}
+  .rsent{font-size:13.5px;margin-top:6px;padding-left:21px;color:var(--mute);font-variant-numeric:tabular-nums;line-height:1.45}
+  .rsent.ok{color:#b7a4e8}
+  .rsent.warn{color:var(--amber)}
+  .card.detail{border-color:rgba(167,139,250,.3)}
+  .card.detail .card-head{cursor:pointer}
 
   /* sync panel (hidden behind the ⚙︎ button) */
   .sync{max-width:560px;margin:20px auto 0;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:none}
@@ -161,11 +205,11 @@
       <div class="title">Account tracker</div>
       <div class="summary" id="summary"></div>
       <div class="autoline" id="autoLine"></div>
-      <div class="warnline" id="warnLine"></div>
     </div>
     <button class="addbtn ghost" id="gearBtn" title="Sync &amp; backup">⚙︎</button>
     <button class="addbtn" id="addBtn">+ Account</button>
   </div>
+  <div id="health"></div>
   <div class="grid" id="grid"></div>
 </div>
 
@@ -185,6 +229,10 @@
     <div class="tokrow">
       <input id="tokInput" type="password" placeholder="ghp_… personal access token" autocomplete="off" autocapitalize="off" spellcheck="false">
       <button class="sbtn" id="tokSave">Save</button>
+    </div>
+    <div class="tokrow">
+      <span class="clab" style="flex-shrink:0">Key expires</span>
+      <input id="expInput" type="date" class="tinput" style="flex:1">
     </div>
     <div class="syncbtns">
       <button class="sbtn primary" id="backupBtn">Backup now</button>
@@ -213,6 +261,7 @@ var MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 var KEY="accounts_v4";
 var TOKEN_KEY="tracker_gh_token";
 var LASTBK_KEY="tracker_last_backup";
+var TOKEN_EXP_KEY="tracker_token_expiry";
 var UNDO_KEY="tracker_undo_v1";
 var AUTOUPD_KEY="tracker_last_autoupd";
 var BACKUP_REPO="bjm12321/claude-tracker-backups";
@@ -235,6 +284,11 @@ function fmtCd(target,now){
   return "in <1m";
 }
 function fmtWk(ts){if(!ts)return"";var d=new Date(ts),h=d.getHours(),m=d.getMinutes(),ap=h>=12?"PM":"AM";h=h%12||12;return WD[d.getDay()]+" "+h+":"+String(m).padStart(2,"0")+" "+ap;}
+function fmtClock(ts){
+  var d=new Date(ts),h=d.getHours(),m=d.getMinutes(),ap=h>=12?"PM":"AM";h=h%12||12;
+  var t=h+":"+String(m).padStart(2,"0")+" "+ap;
+  return d.toDateString()===new Date().toDateString()?t:WD[d.getDay()]+" "+t;
+}
 function fmtDate(ts){var d=new Date(ts);return MO[d.getMonth()]+" "+d.getDate();}
 function toDateInput(ts){var d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function fillColor(p){return p>=100?"var(--red)":p>=70?"var(--amber)":"var(--purple-deep)";}
@@ -318,7 +372,7 @@ function newAccount(name){
 }
 function defaults(){return {accounts:[],order:[]};}
 var state=null;
-var ui={open:null,draft:null,closedShown:{}};
+var ui={open:null,draft:null,closedShown:{},expanded:null};
 var grid=document.getElementById("grid");
 
 function acct(id){for(var i=0;i<state.accounts.length;i++)if(state.accounts[i].id===id)return state.accounts[i];return null;}
@@ -399,15 +453,92 @@ function projFormHtml(d){
     +'<div class="fbtns"><button class="save" data-act="dsave">Save</button><button class="cancel" data-act="dcancel">Cancel</button></div></div>';
 }
 
-function cardHtml(a,now){
+// ---- plain-language status for a row -------------------------------------
+function weekLeft(a){return Math.max(0,100-a.weekly.pct);}
+function statusLine(a,now){
+  if(!isBlocked(a,now))return {text:"Ready · "+weekLeft(a)+"% of week left",cls:"ok"};
+  if(a.daily.resetAt)return {text:"Resting — back at "+fmtClock(a.daily.resetAt),cls:"",cd:a.daily.resetAt};
+  return {text:"Maxed — tap to set when it's back",cls:"warn"};
+}
+
+// ---- the Continue hero ----------------------------------------------------
+// Leads with the most recently touched open project; the app solves the
+// "which account" part underneath.
+function pickContinue(now){
+  var best=null;
+  state.accounts.forEach(function(a){
+    a.projects.forEach(function(p){
+      if(p.archived)return;
+      var t=p.touchedAt||0;
+      if(!best||t>best.t)best={p:p,a:a,t:t};
+    });
+  });
+  var ready=state.accounts.filter(function(a){return !isBlocked(a,now);});
+  ready.sort(function(x,y){return weekLeft(y)-weekLeft(x);});
+  var freshest=ready[0]||null;
+  var nextAcct=null,nextAt=Infinity;
+  state.accounts.forEach(function(a){
+    if(isBlocked(a,now)&&a.daily.resetAt&&a.daily.resetAt<nextAt){nextAt=a.daily.resetAt;nextAcct=a;}
+  });
+  return {best:best,freshest:freshest,nextAcct:nextAcct,nextAt:nextAt};
+}
+function heroHtml(now){
+  var c=pickContinue(now);
+  if(c.freshest){
+    if(c.best){
+      var home=c.best.a, ready=!isBlocked(home,now);
+      var target=ready?home:c.freshest;
+      var h='<div class="hero" data-act="expand" data-id="'+target.id+'">'
+        +'<div class="eyebrow">CONTINUE</div>'
+        +'<div class="htitle">'+esc(c.best.p.title)+'</div>'
+        +(c.best.p.note?'<div class="hnote">'+esc(c.best.p.note)+'</div>':"")
+        +'<div class="hgo">→ on <b>'+esc(target.name)+'</b> — ready · '+weekLeft(target)+'% of week left</div>';
+      if(!ready)h+='<div class="hsub">last worked on '+esc(home.name)+' — it’s resting</div>';
+      return h+'</div>';
+    }
+    return '<div class="hero" data-act="expand" data-id="'+c.freshest.id+'">'
+      +'<div class="eyebrow">START HERE</div>'
+      +'<div class="htitle">'+esc(c.freshest.name)+'</div>'
+      +'<div class="hgo">Freshest account · '+weekLeft(c.freshest)+'% of week left</div></div>';
+  }
+  // nothing ready
+  var h2='<div class="hero"'+(c.nextAcct?' data-act="expand" data-id="'+c.nextAcct.id+'"':"")+'>'
+    +'<div class="eyebrow">ALL RESTING</div>';
+  if(c.nextAcct){
+    h2+='<div class="htitle">Back at '+fmtClock(c.nextAt)+'</div>'
+      +'<div class="hgo"><b>'+esc(c.nextAcct.name)+'</b> frees up first <span data-cd="'+c.nextAt+'" data-cd-pre="(" data-cd-post=")">('+fmtCd(c.nextAt,now)+')</span></div>';
+  }else{
+    h2+='<div class="htitle">All maxed</div>'
+      +'<div class="hgo">Tap an account to set when it’s back.</div>';
+  }
+  if(c.best)h2+='<div class="hsub">Then: continue '+esc(c.best.p.title)+'</div>';
+  return h2+'</div>';
+}
+
+// ---- collapsed account row ------------------------------------------------
+function rowHtml(a,now){
+  var s=statusLine(a,now);
+  var bars=LIMITS.map(function(l){
+    return '<span class="mbl">'+LABEL[l][0]+'</span><span class="mb"><i style="width:'+a[l].pct+'%;background:'+fillColor(a[l].pct)+'"></i></span>';
+  }).join("");
+  var sent=s.cd
+    ?'<span data-cd="'+s.cd+'" data-cd-pre="'+esc(s.text)+' (" data-cd-post=")">'+esc(s.text)+' ('+fmtCd(s.cd,now)+')</span>'
+    :esc(s.text);
+  return '<div class="card rowc'+(isBlocked(a,now)?" blocked":"")+'" data-id="'+a.id+'" data-group="'+(isBlocked(a,now)?"b":"r")+'" data-act="expand">'
+    +'<div class="rhead"><span class="chev">▸</span><span class="rname">'+esc(a.name)+'</span><span class="mbs">'+bars+'</span></div>'
+    +'<div class="rsent '+s.cls+'">'+sent+'</div></div>';
+}
+
+// ---- expanded detail card (all the controls live here) ---------------------
+function detailHtml(a,now){
   var blocked=isBlocked(a,now);
   var status;
   if(!blocked)status='<span class="status ready">Ready</span>';
   else if(a.daily.resetAt)status='<span class="status wait" data-cd-status="'+a.daily.resetAt+'">Ready '+fmtCd(a.daily.resetAt,now)+'</span>';
   else status='<span class="status wait">Maxed · set reset</span>';
 
-  var h='<div class="card'+(blocked?" blocked":"")+'" data-id="'+a.id+'" data-group="'+(blocked?"b":"r")+'">'
-    +'<div class="card-head">'
+  var h='<div class="card detail'+(blocked?" blocked":"")+'" data-id="'+a.id+'" data-group="'+(blocked?"b":"r")+'">'
+    +'<div class="card-head" data-act="collapse"><span class="chev">▾</span>'
     +'<span class="acct-name">'+esc(a.name)+'</span>'
     +'<button class="ename" data-act="rename" title="Rename account">✎</button>'+status
     +'<button class="del" data-act="delacct" title="Delete account">✕</button></div>';
@@ -436,7 +567,9 @@ function cardHtml(a,now){
       });
     }
   }
-  h+='</div></div>';
+  h+='</div>'
+    +'<div class="chips" style="margin-top:14px"><button class="chip" data-act="collapse">▴ Close</button></div>'
+    +'</div>';
   return h;
 }
 
@@ -457,7 +590,9 @@ function render(){
   var ordered=state.order.map(acct);
   var ready=ordered.filter(function(a){return !isBlocked(a,now);});
   var blocked=ordered.filter(function(a){return isBlocked(a,now);});
-  grid.innerHTML=ready.concat(blocked).map(function(a){return cardHtml(a,now);}).join("");
+  grid.innerHTML=heroHtml(now)+ready.concat(blocked).map(function(a){
+    return a.id===ui.expanded?detailHtml(a,now):rowHtml(a,now);
+  }).join("");
   document.getElementById("summary").textContent=ready.length+" of "+state.accounts.length+" ready";
 }
 
@@ -469,7 +604,7 @@ setInterval(function(){
   var els=grid.querySelectorAll("[data-cd]");
   for(var i=0;i<els.length;i++){
     var t=+els[i].getAttribute("data-cd");
-    els[i].textContent=(els[i].getAttribute("data-cd-pre")||"")+fmtCd(t,now);
+    els[i].textContent=(els[i].getAttribute("data-cd-pre")||"")+fmtCd(t,now)+(els[i].getAttribute("data-cd-post")||"");
   }
   var sts=grid.querySelectorAll("[data-cd-status]");
   for(var j=0;j<sts.length;j++){
@@ -508,6 +643,7 @@ function deleteAccount(a){
   if(!state.ignoredSlugs)state.ignoredSlugs=[];
   if(state.ignoredSlugs.indexOf(slugOf(a.name))<0)state.ignoredSlugs.push(slugOf(a.name));
   if(ui.draft&&ui.draft.accId===a.id)ui.draft=null;
+  if(ui.expanded===a.id)ui.expanded=null;
   save();render();
   showUndoToast("Account deleted",8000);
 }
@@ -523,9 +659,17 @@ grid.addEventListener("click",function(e){
   var act=btn.dataset.act;
   if(act==="addfirst"){addAccount();return;}
   if(act==="importblank"){doImport();return;}
-  var a=cardOf(btn); if(!a)return;
+  var a=cardOf(btn)||(btn.dataset.id?acct(btn.dataset.id):null); if(!a)return;
   var limit=btn.dataset.limit, pid=btn.dataset.pid;
-  if(act==="rename"){renameAccount(a);}
+  if(act==="expand"){
+    // taps on things inside the row that have their own action shouldn't expand
+    ui.expanded=a.id;ui.open=null;render();
+  }
+  else if(act==="collapse"){
+    if(e.target.closest("[data-act]")!==btn)return; // let ✎/✕ in the head win
+    ui.expanded=null;ui.open=null;render();
+  }
+  else if(act==="rename"){renameAccount(a);}
   else if(act==="delacct"){deleteAccount(a);}
   else if(act==="toggle"){var k=a.id+":"+limit;ui.open=ui.open===k?null:k;render();}
   else if(act==="pct0"||act==="pct100"){a[limit].pct=act==="pct0"?0:100;save();render();}
@@ -539,7 +683,7 @@ grid.addEventListener("click",function(e){
   }
   else if(act==="padd"){ui.draft={accId:a.id,projId:null,title:"",note:""};render();focusDraft();}
   else if(act==="pedit"){var p=a.projects.find(function(x){return x.id===pid;});ui.draft={accId:a.id,projId:pid,title:p.title,note:p.note||""};render();focusDraft();}
-  else if(act==="parch"||act==="preopen"){a.projects.forEach(function(p){if(p.id===pid)p.archived=act==="parch";});save();render();}
+  else if(act==="parch"||act==="preopen"){a.projects.forEach(function(p){if(p.id===pid){p.archived=act==="parch";if(act==="preopen")p.touchedAt=Date.now();}});save();render();}
   else if(act==="pdel"){a.projects=a.projects.filter(function(p){return p.id!==pid;});save();render();}
   else if(act==="ctoggle"){ui.closedShown[a.id]=!ui.closedShown[a.id];render();}
   else if(act==="dsave"){
@@ -547,8 +691,8 @@ grid.addEventListener("click",function(e){
     var title=f.querySelector("[data-dtitle]").value.trim();
     var note=f.querySelector("[data-dnote]").value;
     if(!title)return;
-    if(ui.draft.projId){a.projects.forEach(function(p){if(p.id===ui.draft.projId){p.title=title;p.note=note;}});}
-    else a.projects.push({id:uid(),title:title,note:note,archived:false});
+    if(ui.draft.projId){a.projects.forEach(function(p){if(p.id===ui.draft.projId){p.title=title;p.note=note;p.touchedAt=Date.now();}});}
+    else a.projects.push({id:uid(),title:title,note:note,archived:false,touchedAt:Date.now()});
     ui.draft=null;save();render();
   }
   else if(act==="dcancel"){ui.draft=null;render();}
@@ -784,20 +928,95 @@ function restoreLatest(){
 }
 function updateSyncStatus(){
   var st=document.getElementById("syncSt");
-  var warn=document.getElementById("warnLine");
   st.className="st";
-  warn.textContent="";
   if(!token()){st.textContent="not set up";return;}
   var last=+lget(LASTBK_KEY)||0;
   if(!last){st.textContent="token saved";return;}
   var days=Math.floor((Date.now()-last)/DAY);
-  if(days>=2){
-    st.textContent="⚠ backed up "+days+"d ago";st.className="st warn";
-    warn.textContent="⚠ Backup is "+days+" days old — tap ⚙︎ to check";
-    return;
-  }
+  if(days>=2){st.textContent="⚠ backed up "+days+"d ago";st.className="st warn";return;}
   st.textContent=days<=0?"backed up today":"backed up yesterday";
 }
+
+// ---- health: one gentle banner at a time, worst problem first -------------
+var healthEl=document.getElementById("health");
+function healthInfo(){
+  if(!token())return null; // sync not set up yet; the ⚙︎ panel handles onboarding
+  var exp=+lget(TOKEN_EXP_KEY)||0;
+  if(exp){
+    var left=exp-Date.now();
+    if(left<=0)return {cls:"bad",text:"🔑 Your GitHub key has expired — auto-updates and backups are paused.",btn:"Fix it",act:"renew"};
+    if(left<=7*DAY){
+      var dLeft=Math.max(1,Math.ceil(left/DAY));
+      return {cls:"",text:"🔑 Your GitHub key expires in "+dLeft+" day"+(dLeft===1?"":"s")+".",btn:"Renew now",act:"renew"};
+    }
+  }
+  var last=+lget(LASTBK_KEY)||0;
+  if(last){
+    var days=Math.floor((Date.now()-last)/DAY);
+    if(days>=2)return {cls:"",text:"☁︎ Last backup was "+days+" days ago.",btn:"Back up",act:"backup"};
+  }
+  return null;
+}
+function renewGuideHtml(open){
+  return '<div id="guide" class="guide'+(open?"":" hide")+'">'
+    +'<div class="rtitle">Renew your key — about 2 minutes</div>'
+    +'<ol>'
+    +'<li>Tap <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Open GitHub</a> (sign in if asked).</li>'
+    +'<li>Token name: <code>tracker-backup</code> · Expiration: <b>90 days</b>.</li>'
+    +'<li>Repository access → <b>Only select repositories</b> → <code>claude-tracker-backups</code>.</li>'
+    +'<li>Permissions → <b>Contents</b> → <b>Read and write</b>.</li>'
+    +'<li>Tap the green <b>Generate token</b> button, then <b>Copy</b>.</li>'
+    +'<li>Paste it below and Save.</li>'
+    +'</ol>'
+    +'<div class="tokrow"><input id="gTok" type="password" placeholder="Paste new key" autocomplete="off" autocapitalize="off" spellcheck="false"></div>'
+    +'<div class="tokrow"><span class="clab" style="flex-shrink:0">It expires</span><input id="gExp" type="date" class="tinput" style="flex:1" value="'+toDateInput(Date.now()+90*DAY)+'"></div>'
+    +'<button class="sbtn primary" data-hact="gsave">Save new key</button>'
+    +'</div>';
+}
+function updateHealth(){
+  if(!healthEl)return;
+  var g=document.getElementById("guide");
+  if(g&&!g.classList.contains("hide"))return; // don't wipe the form mid-typing
+  var h=healthInfo();
+  if(!h){healthEl.innerHTML="";return;}
+  healthEl.innerHTML='<div class="banner '+h.cls+'"><span class="btxt">'+h.text+'</span>'
+    +'<button class="bbtn" data-hact="'+h.act+'">'+h.btn+'</button></div>'
+    +(h.act==="renew"?renewGuideHtml(false):"");
+}
+healthEl.addEventListener("click",function(e){
+  var b=e.target.closest("[data-hact]");
+  if(!b)return;
+  var act=b.dataset.hact;
+  if(act==="renew"){
+    var g=document.getElementById("guide");
+    if(g)g.classList.toggle("hide");
+  }else if(act==="backup"){
+    document.getElementById("sync").classList.add("show");
+    backupNow(false).then(function(){updateSyncStatus();updateHealth();});
+  }else if(act==="gsave"){
+    var t=document.getElementById("gTok").value.trim();
+    if(!t)return;
+    var dv=document.getElementById("gExp").value;
+    lset(TOKEN_KEY,t);
+    lset(TOKEN_EXP_KEY,String(dv?new Date(dv+"T00:00:00").getTime():Date.now()+85*DAY));
+    prefillExpiry();
+    updateSyncStatus();
+    lastPullTry=0;pullStatus();
+    healthEl.innerHTML='<div class="banner ok"><span class="btxt">✓ New key saved — you’re all set.</span></div>';
+    setTimeout(updateHealth,4000);
+  }
+});
+function prefillExpiry(){
+  var el=document.getElementById("expInput");
+  var exp=+lget(TOKEN_EXP_KEY)||0;
+  if(el)el.value=exp?toDateInput(exp):"";
+}
+document.getElementById("expInput").addEventListener("change",function(){
+  var v=this.value;
+  if(v)lset(TOKEN_EXP_KEY,String(new Date(v+"T00:00:00").getTime()));
+  else{try{localStorage.removeItem(TOKEN_EXP_KEY);}catch(e){}}
+  updateHealth();
+});
 function maybeAutoBackup(){
   if(!token()||!state||!state.accounts.length)return;
   var last=+lget(LASTBK_KEY)||0;
@@ -821,8 +1040,8 @@ function applyStatus(a,s){
     var note=typeof s.project.note==="string"?s.project.note:"";
     var existing=null;
     a.projects.forEach(function(p){if(!p.archived&&p.title.toLowerCase()===title.toLowerCase())existing=p;});
-    if(existing){if(note)existing.note=note;}
-    else a.projects.push({id:uid(),title:title,note:note,archived:false});
+    if(existing){if(note)existing.note=note;existing.touchedAt=s.updatedAt;}
+    else a.projects.push({id:uid(),title:title,note:note,archived:false,touchedAt:s.updatedAt});
   }
   a.lastStatusAt=s.updatedAt;
   return true;
@@ -881,7 +1100,7 @@ function updateAutoLine(){
   autoLineEl.textContent="auto-updated "+t;
 }
 setInterval(pullStatus,STATUS_PULL_MS);
-setInterval(updateAutoLine,30000);
+setInterval(function(){updateAutoLine();updateHealth();},30000);
 if(autoLineEl)autoLineEl.addEventListener("click",function(){
   if(!token())return;
   autoLineEl.textContent="checking…";
@@ -933,9 +1152,13 @@ window.addEventListener("touchend",function(){
 });
 document.getElementById("tokSave").addEventListener("click",function(){
   var v=document.getElementById("tokInput").value.trim();
-  if(v){lset(TOKEN_KEY,v);document.getElementById("tokInput").value="";smsg("Token saved on this device.","ok");}
+  if(v){
+    lset(TOKEN_KEY,v);document.getElementById("tokInput").value="";smsg("Token saved on this device.","ok");
+    if(!lget(TOKEN_EXP_KEY)){lset(TOKEN_EXP_KEY,String(Date.now()+85*DAY));prefillExpiry();}
+  }
   else{try{localStorage.removeItem(TOKEN_KEY);}catch(e){}smsg("Token cleared.","ok");}
   updateSyncStatus();
+  updateHealth();
   lastPullTry=0;pullStatus();
 });
 document.getElementById("backupBtn").addEventListener("click",function(){backupNow(false);});
@@ -947,6 +1170,8 @@ loadData().then(function(d){
   autoClear(Date.now());
   render();
   updateSyncStatus();
+  prefillExpiry();
+  updateHealth();
   updateAutoLine();
   maybeAutoBackup();
   pullStatus();
