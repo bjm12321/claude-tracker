@@ -112,7 +112,8 @@
 
   /* pull-to-refresh */
   .ptr{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;z-index:40;pointer-events:none;
-    padding-top:calc(10px + env(safe-area-inset-top));transform:translateY(-80px);transition:transform .15s}
+    padding-top:calc(10px + env(safe-area-inset-top));transform:translateY(calc(-100% - 24px));transition:transform .18s}
+  .ptr.show{transform:translateY(0)}
   .ptr span{background:var(--card);border:1px solid rgba(167,139,250,.4);border-radius:99px;color:var(--purple);
     font-size:13px;font-weight:550;padding:9px 16px;box-shadow:0 6px 20px rgba(0,0,0,.4)}
 
@@ -1126,11 +1127,11 @@ var ptrEl=document.getElementById("ptr"),ptrTxt=document.getElementById("ptrTxt"
 var ptrStartY=null,ptrArmed=false,ptrBusy=false;
 function ptrHide(){
   ptrStartY=null;ptrArmed=false;
-  ptrEl.style.transition="transform .15s";
-  ptrEl.style.transform="";
+  ptrEl.classList.remove("show");
 }
 window.addEventListener("touchstart",function(e){
   if(cardDragActive||ptrBusy)return;
+  if(ptrEl.classList.contains("show"))ptrHide(); // self-heal if ever left visible
   ptrStartY=window.scrollY<=0?e.touches[0].clientY:null;
 },{passive:true});
 window.addEventListener("touchmove",function(e){
@@ -1138,24 +1139,22 @@ window.addEventListener("touchmove",function(e){
   var dy=e.touches[0].clientY-ptrStartY;
   if(dy<=0||window.scrollY>0){ptrHide();return;}
   if(e.cancelable)e.preventDefault();
-  var pull=Math.min(95,dy*0.45);
+  var pull=dy*0.45;
   ptrArmed=pull>=55;
   ptrTxt.textContent=ptrArmed?"↻ Release to refresh":"↓ Pull to refresh";
-  ptrEl.style.transition="none";
-  ptrEl.style.transform="translateY("+(pull-80)+"px)";
+  if(pull>18)ptrEl.classList.add("show");else ptrEl.classList.remove("show");
 },{passive:false});
 window.addEventListener("touchend",function(){
   if(ptrStartY==null)return;
   if(ptrArmed&&!ptrBusy){
     ptrBusy=true;
     ptrTxt.textContent="↻ Checking…";
-    ptrEl.style.transition="transform .15s";
-    ptrEl.style.transform="translateY(0)";
     lastPullTry=0;pullStatus();
     updateSyncStatus();
     setTimeout(function(){ptrHide();ptrBusy=false;updateAutoLine();},1200);
   }else ptrHide();
 });
+window.addEventListener("touchcancel",function(){if(!ptrBusy)ptrHide();});
 document.getElementById("tokSave").addEventListener("click",function(){
   var v=document.getElementById("tokInput").value.trim();
   if(v){
